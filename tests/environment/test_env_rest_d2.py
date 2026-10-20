@@ -169,3 +169,10 @@ def test_sandbox_routes_per_session(client):
     assert st["t_ns"] == t and int(st["calendar"]["t_cal_unix_ns"]) - int(fa["calendar"]["t_cal_unix_ns"]) == t - fa["t_ns"]
     assert client.post(f"{a}/env/preset", json={"name": "fog"}).status_code == 403
     assert client.get("/api/sandbox/v1/sessions/sb-zzzzzzzzzz/env/state").status_code == 404
+
+
+@pytest.mark.parametrize("name", ["d²³⁴.awsl", "d\u0663\u0666\u0660.awsl", "d0_1.awsl", "d+01.awsl"])
+def test_streamlines_name_ascii_digits(client, name):
+    """流线文件名只认 ASCII 数字：上标数字过去让 int() 抛错，请求变成 500；其余写法同样 404。"""
+    r = client.get(f"/api/env/streamlines/default/{name}")
+    assert r.status_code == 404 and r.json()["code"] == 305

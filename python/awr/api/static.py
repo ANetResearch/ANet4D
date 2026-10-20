@@ -64,6 +64,9 @@ def parse_range(header: str | None, size: int) -> tuple[int, int] | str | None:
     if "," in spec:
         return None
     a, _, b = spec.partition("-")
+    # RFC 9110 的字节位置只有 ASCII 数字；int() 还接受下划线、正负号、空白和其他文字的数字，这里一概不认。
+    if not all(x == "" or (x.isascii() and x.isdigit()) for x in (a, b)):
+        return None
     try:
         if a == "":
             n = int(b)
