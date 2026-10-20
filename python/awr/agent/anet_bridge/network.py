@@ -20,6 +20,7 @@ import time
 import urllib.request
 from collections.abc import AsyncIterator, Mapping
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 from ..anet_mock.identity import aid_short
 from ..runtime.network import AgentView, TaskResult
@@ -44,11 +45,23 @@ class ControlPlane(Protocol):
     async def wire(self) -> str: ...
 
 
+def _loopback_base(base: str) -> bool:
+    """控制面地址只能是 `http://127.0.0.1:端口` 或 `http://[::1]:端口`。按解析后的主机判断，不按前缀：
+    `http://127.0.0.1:1@evil.example/` 前缀相符，真正的主机却是 evil.example，Bearer 令牌会发到那里。"""
+    try:
+        u = urlsplit(base)
+        port = u.port
+    except ValueError:
+        return False
+    return (u.scheme == "http" and u.hostname in ("127.0.0.1", "::1") and port is not None
+            and u.username is None and u.password is None and u.path in ("", "/") and not u.query and not u.fragment)
+
+
 class HttpControlPlane:
     """daemon 控制面（回环 HTTP，`control_token.txt` 作为 Bearer）。V1.0 使用；D1 不启动 daemon。"""
 
     def __init__(self, base: str, token: str = "", timeout_s: float = 2.0) -> None:
-        if not (base.startswith("http://127.0.0.1:") or base.startswith("http://[::1]:")):
+        if not _loopback_base(base):
             raise AnetError(485, "control plane must be loopback")
         self.base = base.rstrip("/")
         self.token = token
