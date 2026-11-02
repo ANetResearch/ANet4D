@@ -86,6 +86,28 @@ def test_daemon_config_safety() -> None:
         HttpControlPlane("http://10.0.0.1:39811")
 
 
+@pytest.mark.parametrize("base", [
+    "http://127.0.0.1:1@evil.example:80",  # 前缀相符，主机是 evil.example
+    "http://127.0.0.1:39811@evil.example/",
+    "http://[::1]:1@evil.example",
+    "http://127.0.0.1.evil.example:1",
+    "http://user:pw@127.0.0.1:39811",
+    "https://127.0.0.1:39811",
+    "http://127.0.0.1",
+    "http://127.0.0.1:39811/x",
+    "http://127.0.0.1:39811?u=1",
+    "http://127.0.0.1:99999",
+])
+def test_control_plane_rejects_non_loopback(base: str) -> None:
+    with pytest.raises(AnetError):
+        HttpControlPlane(base)
+
+
+@pytest.mark.parametrize("base", ["http://127.0.0.1:39811", "http://127.0.0.1:39811/", "http://[::1]:39811"])
+def test_control_plane_accepts_loopback(base: str) -> None:
+    assert HttpControlPlane(base).base == base.rstrip("/")
+
+
 def test_versions_lock() -> None:
     v = load_versions()
     assert v["wire"] == "1" and v["anetcore"] == "v0.14.0" and v["anet"] and v["anethub"]
