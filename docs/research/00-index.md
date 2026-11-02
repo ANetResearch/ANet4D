@@ -115,6 +115,7 @@
 | d03 | morphicons | `d03-morphicons.md` | 静态 `<Icon>` 与动态 `<StateIcon>`；morph 白名单；并发预算 K=8 |
 | d04 | shadcn/ui | `d04-shadcn-ui.md` | base-mira；`anet-base.json`；布局 block 组合；Base UI toast |
 | d05 | ANet | `d05-anet.md` | 协作平面；一机一 AID；效果状态；合同网；品牌使用规范 |
+| d06 | 渐进暴露 | `d06-progressive-exposure.md` | 传感器、边缘节点、完整智能体三档；四档耦合与搜救流程对照；复合体留在控制平面；四个可测实验 |
 | x01 | UrbanScene3D | `x01-urbanscene3d-data.md` | 六城规范化矩阵（权威）；着色方案；Height_map；任务剧本 S1–S6 |
 | n01 | 新 Web 点云 / 3DGS | `n01-discover-web-pointcloud.md` | voxelkloud 两级预算选择器、画质阶梯、cut 点径、单缓冲单 draw、compute 光栅 |
 | n02 | 新重建 / SLAM | `n02-discover-recon-slam.md` | Engine Adapter v2；DA3-SMALL CPU 冒烟；RKO-LIO；CSF 规则语义 |
