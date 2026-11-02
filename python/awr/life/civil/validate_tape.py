@@ -36,9 +36,9 @@ def validate(event: Path, nav: Path) -> dict:
 
     schema = Path(__file__).resolve().parents[4] / "packages/contracts/event/tape.v2.schema.json"
     if not schema.is_file():
-        from awr.life.civil.assemble import TAPE_V2_MISSING
+        from awr.life.civil.assemble import SCENARIO_TAPE_PENDING
 
-        raise RuntimeError(TAPE_V2_MISSING)
+        raise RuntimeError(SCENARIO_TAPE_PENDING)
     jsonschema.Draft202012Validator(json.loads(schema.read_text())).validate(tape.header)
     tape.verify()
     surfaces = SurfaceMap(nav)

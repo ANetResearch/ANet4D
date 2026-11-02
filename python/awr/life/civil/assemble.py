@@ -36,10 +36,13 @@ DEFAULT_ENV = {
 }
 
 
-TAPE_V2_MISSING = (
-    "awr.sim.events.tape has no RECORD_V2: the tape v2 record (container, speed and cast fields) is a pending upstream contract "
-    "change, carried so far by the realism patch of the CHIMERA benchmark (patches/realistic-civil-world.patch against upstream "
-    "705a1be); the assembly stage needs it."
+# Pending capability (2026-11-02): scenario tape generation. The tape v2 record (container, speed and cast fields) will be
+# defined together with the standardized scenario principle of the Gaussian (3DGS) scenario engine; until then the life engine
+# runs its stages up to QA and the assembly and validation of a scenario tape raise this error. See docs/life/README.md §2.
+SCENARIO_TAPE_PENDING = (
+    "Scenario tape generation is pending: it needs the tape v2 record (container, speed and cast fields), which ANet4D will "
+    "define with the standardized scenario principle of the Gaussian scenario engine (docs/life/README.md, section 2). "
+    "The stages up to QA run on the current main; awr.life.civil.assemble.build and awr.life.civil.validate_tape do not."
 )
 
 
@@ -157,7 +160,7 @@ def build(
             write_tape,
         )
     except ImportError as e:
-        raise RuntimeError(TAPE_V2_MISSING) from e
+        raise RuntimeError(SCENARIO_TAPE_PENDING) from e
     from awr.sim.events.jcs import jcs
 
     d = np.load(sim_dir / "tracks.npz")

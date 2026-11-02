@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 分支 | `m23/life-engine`（基于 `main` `c79a3e0`，V0.3.4） |
+| 提交 | 直接提交 `main`（基线 `c79a3e0`，V0.3.4） |
 | 来源 | CHIMERA 基准仓库 `houqiii/chimera`，提交 `b5bede3`（2026-11-02）的 `chimera/{civil, life, ambient, envpack}`、共享辅助模块与资产目录 |
 | 说明文档 | [docs/life/README.md](../life/README.md)（包结构、运行、依赖、限制、设计笔记索引） |
 | 作者 | houqiii |
@@ -15,7 +15,7 @@
 4. 路径修正：源码哈希（构建出处）、磁带 schema、资产目录由 CHIMERA 的仓库布局（`chimera/`、`vendor/ANet-Drone4D/`、`assets/`）改为本仓库布局（`python/awr/life/`、`python/awr/sim/events/`、`packages/contracts/event/`、`appearance/catalog/`）。
 5. 依赖：`pyproject.toml` 新增附加包 `life`（shapely、pillow、rsplan 1.0.10、py-trees）与 `life-ext`（eclipse-sumo、jupedsim、contourpy），两者不进入锁文件，在 `tools/lint/check-deps.mjs` 的 `PY_UNLOCKED_EXTRAS` 登记（与 `geo-worker`、`px4` 同一处置）。
 6. 导入边界：`awr.life` 在 `tools/lint/check_py_imports.py` 登记为 D3 层包（`D3_PACKAGES` 与 `_D3_PATHS`），D2 代码不得导入它；`awr.life` 对 `awr` 的导入只有 `awr.sim.events`、`awr.world.mesh` 与 `awr.sensorsvc.camera.raster.ActorFrame`。
-7. 测试：`tests/life/` 收录 CHIMERA 测试集中只依赖本包的 112 个测试文件、合成小镇夹具 `life_toytown.py` 与小型数据（`tests/life/data/`，约 500 KB）；缺 `life` 附加包时整目录按 `[dep]` 跳过。
+7. 测试：`tests/life/` 收录 CHIMERA 测试集中只依赖本包的 112 个测试文件、合成小镇夹具 `life_toytown.py` 与小型数据（`tests/life/data/`，约 330 KB）；缺 `life` 附加包时整个目录不被收集（conftest 中的 `collect_ignore_glob`；在 conftest 导入时跳过会成为收集错误，已在无附加包的环境中验证）。
 8. 文档：`docs/life/README.md`、18 篇设计笔记（`docs/life/notes/`）、配置样例（`docs/life/examples/`）；`docs/README.md` 登记。
 
 ## 2. 为满足仓库规则所做的改动
@@ -52,14 +52,14 @@
 
 格式化前的 15 个失败中，12 个来自上述剔除文件，3 个来自源码哈希路径仍指向 `life/traffic_evidence.py`（已改为 `motion/`）。中间一轮（含集合与数值规则的自动改写）出现 22 个失败，是放弃这些改写的依据（§2）；安全修复 `F401` 曾删去三个测试文件对 autouse 夹具 `contacts` 的再导出，已加 `noqa` 恢复。
 
-## 4. 限制与需要讨论的事项
+## 4. 待补能力与限制
 
-1. **磁带 v2 是未进入上游的契约改动。** CHIMERA 的引擎对着"上游 `705a1be` + 四个补丁"开发（`patches/realistic-civil-world.patch` 等）；补丁为 `awr.sim.events.tape` 增加 `RECORD_V2`、`NO_CONTAINER_V2`（容器、速度与角色字段）与 `packages/contracts/event/tape.v2.schema.json`，并改动 `gen.py`、`sensorsvc/camera/raster.py`、`capture.py`、`agentsdk/env/l2.py`、`tape_manifest.v1.schema.json`。本仓库 `main` 没有这些改动。因此 `awr.life` 的第 1 至 6 阶段（准入、语义、人口、日程、运动求解、QA）在 `main` 上可用，第 7 阶段（`civil.assemble.build` 写磁带）与 `civil.validate_tape` 在缺少 v2 记录时抛出带说明的 `RuntimeError`（`TAPE_V2_MISSING`）。磁带 v2 的采纳（M23 契约）属于架构事项，需与负责人讨论后另行提交；本 PR 不改动任何契约。
+1. **场景磁带生成待补**（负责人 2026-11-02 决定）。CHIMERA 的引擎对着"上游 `705a1be` + 四个补丁"开发，其中 `patches/realistic-civil-world.patch` 为 `awr.sim.events.tape` 增加磁带 v2 记录（`RECORD_V2`、`NO_CONTAINER_V2`：容器、速度与角色字段）与 `tape.v2.schema.json`，并改动 `gen.py`、`sensorsvc/camera/raster.py`、`capture.py`、`agentsdk/env/l2.py`。本仓库的场景尚未对齐目标引擎所依据的场景 principle，因此不移植这些补丁：场景引擎将先规定标准化的场景 principle，目标引擎依据它生成；磁带 v2 随高斯（3DGS）场景引擎一并定义后再补齐生成能力。当前 `civil.assemble.build` 与 `civil.validate_tape` 抛出 `RuntimeError(SCENARIO_TAPE_PENDING)`，第 1 至 6 阶段（准入、语义、人口、日程、运动求解、QA）可用。引擎与场景的接入点清单见 [docs/life/README.md](../life/README.md) §2。
 2. 渲染耦合未移植：骨骼角色、接触阴影、车辆贴片与 L2 相机合成留在 CHIMERA（`chimera.render` 与对 `sensorsvc/camera` 的补丁）。
-3. 场景输入仍是 GLB 世界包、导航栅格与 CHIMERA 脚本产出的实测支撑、车道登记与停车普查；这些生产脚本（`scripts/basemap`、`scripts/envpack`、`scripts/route_b`、`scripts/sandbox`）未移植。
+3. 场景输入的生产脚本（`scripts/basemap`、`scripts/envpack`、`scripts/route_b`、`scripts/sandbox`）与小镇数据未移植；它们产出的实测支撑、车道登记与停车普查将由场景 principle 的派生层取代。
 4. SUMO 与 JuPedSim 后端的跨机器确定性未验证。
-5. 与 m23 `awr.sim.activities` 的生成器协议、随机域登记（流 24 子域）、M18 绑定待后续工作包；模块号待负责人登记。
-6. 上游自 `705a1be` 以来的改动（`sim/events/appearance.py`、`camera/actorbuf.py`、`camera/encode.py`、`appearance_lib.v1`）与 CHIMERA 的角色外观路线存在重叠，合并方向需要讨论。
+5. 与 m23 `awr.sim.activities` 的生成器协议、随机域登记（流 24 子域）、M18 绑定待后续工作。
+6. 上游自 `705a1be` 以来的改动（`sim/events/appearance.py`、`camera/actorbuf.py`、`camera/encode.py`、`appearance_lib.v1`）与 CHIMERA 的角色外观路线存在重叠，随渲染部分一并处理。
 
 ## 5. 复现
 
