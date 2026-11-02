@@ -1,0 +1,50 @@
+[
+  {
+    "id": "bench",
+    "path": "assets/sources/bench.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/avenue-slatted-park-bench-bde5a75b",
+    "download": "https://www.innerscene.com/api/library/avenue-slatted-park-bench-bde5a75b/download",
+    "sha256": "4b95f011232bf96e5018c3c70256799da6dbd844241055ca26cd31a9025e14a8"
+  },
+  {
+    "id": "litter-bin",
+    "path": "assets/sources/litter-bin.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/slatted-park-litter-bin-6334976f",
+    "download": "https://www.innerscene.com/api/library/slatted-park-litter-bin-6334976f/download",
+    "sha256": "2e19408ea6f72e3b1503850d77202e60dea64052983d62407120b2d8f1c460cf"
+  },
+  {
+    "id": "hydrant",
+    "path": "assets/sources/hydrant.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/fire-hydrant-6f53bb5d",
+    "download": "https://www.innerscene.com/api/library/fire-hydrant-6f53bb5d/download",
+    "sha256": "0c12d3dd8e5b05da0b795b781b8cc311c50f29a71358bb70d2d82c3da57518c7"
+  },
+  {
+    "id": "parked-bicycle",
+    "path": "assets/sources/parked-bicycle.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/city-bicycle-58a2a324",
+    "download": "https://www.innerscene.com/api/library/city-bicycle-58a2a324/download",
+    "sha256": "1c9f5b5f95a869b273c4e2023c37392d22872286efe8e0cd7f640146611ce802"
+  },
+  {
+    "id": "bollard",
+    "path": "assets/sources/bollard.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/steel-security-bollard-5e948999",
+    "download": "https://www.innerscene.com/api/library/steel-security-bollard-5e948999/download",
+    "sha256": "edefe34875e31e8754ef895362a23a1aa9ba5e41836f3556394dfac9e7a06e5a"
+  },
+  {
+    "id": "bicycle-rack",
+    "path": "assets/sources/bicycle-rack.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/three-loop-bicycle-rack-3a1b8cc5",
+    "download": "https://www.innerscene.com/api/library/three-loop-bicycle-rack-3a1b8cc5/download",
+    "sha256": "6e9b71524cfe13285c6660ad1c35dfbf7fa7fbf0f9199d614b44aa1c08aaecfe"
+  }
+]

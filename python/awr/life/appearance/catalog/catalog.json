@@ -1,0 +1,418 @@
+{
+  "schema": "d4ale.assets.v1",
+  "assets": [
+    {
+      "id": "human-1",
+      "kind": "human",
+      "suit": "male_casualsuit01",
+      "hair": "short01",
+      "skin": "young_caucasian_male",
+      "triangles": 39352,
+      "dimensions_m": [
+        0.34131795167922974,
+        0.6017975807189941,
+        1.7666809558868408
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "dbc92649b01737136ac844bd31a58de25c73da71ce18f52534cf9951daa90f62",
+      "png_sha256": "3fc4d14dcf7409dec12ae5cb8ab1e817139ad58e4f651e1b035d08c63910f09b"
+    },
+    {
+      "id": "human-2",
+      "kind": "human",
+      "suit": "male_casualsuit02",
+      "hair": "short02",
+      "skin": "young_african_male",
+      "triangles": 26640,
+      "dimensions_m": [
+        0.35303887724876404,
+        0.6192468404769897,
+        1.834559679031372
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "3e7121e64c7d54e3582f009e2c35fbdd5303646de1ea392b2f5c663f44e734f1",
+      "png_sha256": "e1ee9964757d3373c7e07e0d22a495966868d3a90d96a1265e4129a9cf81a626"
+    },
+    {
+      "id": "human-3",
+      "kind": "human",
+      "suit": "female_casualsuit01",
+      "hair": "short03",
+      "skin": "young_asian_female",
+      "triangles": 26690,
+      "dimensions_m": [
+        0.27933183312416077,
+        0.4678380489349365,
+        1.499302625656128
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "86596c30b2c4d7121afbcadea20c8d09f304d419c07eb4cd2b7cd76682db30e3",
+      "png_sha256": "0d70ce976a30e8ad869d82081a942b1d1c7c0f5b1627ec0dec68bd2fd8e0d345"
+    },
+    {
+      "id": "human-4",
+      "kind": "human",
+      "suit": "female_casualsuit02",
+      "hair": "long01",
+      "skin": "young_caucasian_female",
+      "triangles": 31812,
+      "dimensions_m": [
+        0.30363062024116516,
+        0.5019052028656006,
+        1.6126034259796143
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "d87a74ffb00621fb3e9498054aae6e7193166dc82051d5308768768b946473c4",
+      "png_sha256": "8af81eeb11b2d836e98cb49666d4053b06d404ac3a4eed79cb124669d00a893c"
+    },
+    {
+      "id": "human-5",
+      "kind": "human",
+      "suit": "male_casualsuit02",
+      "hair": "short03",
+      "skin": "young_caucasian_male",
+      "triangles": 25218,
+      "dimensions_m": [
+        0.33972030878067017,
+        0.6011413931846619,
+        1.756656527519226
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "84a312c4e4bcc4f9ec6c7dca4850a49aeb9e155e7e07230da55ce537cf067c68",
+      "png_sha256": "b1ace2032f219912e3263f389258607b8a7a8cede437a2dab3d5d8c857392273"
+    },
+    {
+      "id": "human-6",
+      "kind": "human",
+      "suit": "male_casualsuit01",
+      "hair": "short02",
+      "skin": "young_african_male",
+      "triangles": 39018,
+      "dimensions_m": [
+        0.3540637493133545,
+        0.6198362112045288,
+        1.834559679031372
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "c61bab1b19a59ebc3e66582c74989ef16a7754b55040239f84094351d052b11c",
+      "png_sha256": "0863b1a1e0ed555efc1a4c10472779d079ecbfcd647e1de2301f4de5fbbbaf9a"
+    },
+    {
+      "id": "human-7",
+      "kind": "human",
+      "suit": "female_casualsuit02",
+      "hair": "short01",
+      "skin": "young_asian_female",
+      "triangles": 31382,
+      "dimensions_m": [
+        0.28317925333976746,
+        0.4678380489349365,
+        1.5068318843841553
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "7e443922738ee45d1e35dcb55d4b9b05fa1295a366c42b1e9c62c15e8ecdd193",
+      "png_sha256": "e87d8ef1717f7c893537e3307cbbc29bc75c9ac368049b3485fc3375de10368a"
+    },
+    {
+      "id": "human-8",
+      "kind": "human",
+      "suit": "female_casualsuit01",
+      "hair": "long01",
+      "skin": "young_caucasian_female",
+      "triangles": 28876,
+      "dimensions_m": [
+        0.3027184307575226,
+        0.5019052028656006,
+        1.6126034259796143
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "f1bd9efe4df87b3f603ae6021bfa167fe2f4989ca347036be1437b8a4974abff",
+      "png_sha256": "7cbfd4762a65cb22aaae4c9c31bf8d9ff52b8e6e85eef9efdffef24f85fc1692"
+    },
+    {
+      "id": "human-9",
+      "kind": "human",
+      "suit": "male_casualsuit01",
+      "hair": "short03",
+      "skin": "young_african_male",
+      "triangles": 37596,
+      "dimensions_m": [
+        0.3540637493133545,
+        0.6198362112045288,
+        1.8250895738601685
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "bbf25e551dac53e84618494297a14d14538b5ee7de43a1e4f0bc7ea39f91a781",
+      "png_sha256": "e6b8321f5ddf327aa1dd2cf05d30d1c9debcf29b4d20e9e4fa918da6b55ff3bb"
+    },
+    {
+      "id": "human-10",
+      "kind": "human",
+      "suit": "male_casualsuit02",
+      "hair": "short01",
+      "skin": "young_caucasian_male",
+      "triangles": 26974,
+      "dimensions_m": [
+        0.33972030878067017,
+        0.6011413931846619,
+        1.7666809558868408
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "4bd78da45c155bb748625ff082e07dea5aa81945cf8ac59f91e93c859282d074",
+      "png_sha256": "630f5126f948d2e5d7c421641d8f6ea318c7328a987ced00d62d4501c1954ecc"
+    },
+    {
+      "id": "human-11",
+      "kind": "human",
+      "suit": "female_casualsuit01",
+      "hair": "short02",
+      "skin": "young_caucasian_female",
+      "triangles": 28112,
+      "dimensions_m": [
+        0.29904142022132874,
+        0.5019052028656006,
+        1.6193996667861938
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "12917f9f9ad23e23464103871f58b475ba0fbf39208ede3ac73cfe482f91c668",
+      "png_sha256": "d1df4ae6e5622b43e8ab0168a98cd32694288883afc3f022640ea4b54fa24d1f"
+    },
+    {
+      "id": "human-12",
+      "kind": "human",
+      "suit": "female_casualsuit02",
+      "hair": "long01",
+      "skin": "young_asian_female",
+      "triangles": 31812,
+      "dimensions_m": [
+        0.28317925333976746,
+        0.4678380489349365,
+        1.5004502534866333
+      ],
+      "stride_m": 1.35,
+      "npz_sha256": "1e231bb616bce772fc33b4e159e75c2e3b3f7f736f4bcd6e1c8ccdd5c0773f3d",
+      "png_sha256": "19b2a20a39afce79ad6c0a39f0b04a8ac442bd05a62d53870fada500447bffbc"
+    },
+    {
+      "id": "bench",
+      "kind": "object",
+      "dimensions_m": [
+        1.5700000524520874,
+        0.6861013211051152,
+        0.9298210556301194
+      ],
+      "triangles": 3292,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/avenue-slatted-park-bench-bde5a75b",
+      "npz_sha256": "ec688292823f0d4e4ce0717b2a78914e9bdc0efeb9252b1ad67a9aa50634ebaa",
+      "png_sha256": "a6c2d4bd2b4352b65eebc17361f218f8c9c1a6fa76e36048841bff98da7af02b"
+    },
+    {
+      "id": "litter-bin",
+      "kind": "object",
+      "dimensions_m": [
+        0.5799999833106995,
+        0.5799999833106995,
+        0.8199999835342169
+      ],
+      "triangles": 11880,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/slatted-park-litter-bin-6334976f",
+      "npz_sha256": "006aafaac18789f9306d596c6d9cd21a97e38b7b88a233431ee9922c5ae91372",
+      "png_sha256": "67a67175ddb1bb316703658e4ead35be90cd5e32a97049d55d40ff6167417ed3"
+    },
+    {
+      "id": "hydrant",
+      "kind": "object",
+      "dimensions_m": [
+        0.2746235430240631,
+        0.31774356961250305,
+        0.7994560238003032
+      ],
+      "triangles": 43158,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/fire-hydrant-6f53bb5d",
+      "npz_sha256": "153afbd9e96d075f2de1b5a3e059aae0b4db4faf2156abdb8aa967b4dc8c160e",
+      "png_sha256": "b169089d49009fe5cd3fc39677c45e0305d397127174df28addd871bb4f5d33f"
+    },
+    {
+      "id": "parked-bicycle",
+      "kind": "object",
+      "dimensions_m": [
+        0.5800998399572268,
+        1.78000009059906,
+        1.0759726079492486
+      ],
+      "triangles": 11784,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/city-bicycle-58a2a324",
+      "npz_sha256": "b7bf45a15c828885b2cd8184c2619f5591e61df8241abe9c879ec4f1df67421c",
+      "png_sha256": "19cdae8a4f86d7f4a03dbda50bc21faab93879af8e576411252b096e6bac8ed9"
+    },
+    {
+      "id": "bollard",
+      "kind": "object",
+      "dimensions_m": [
+        0.2899999916553485,
+        0.2899999916553485,
+        0.9000000096857548
+      ],
+      "triangles": 3380,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/steel-security-bollard-5e948999",
+      "npz_sha256": "135a492f148a2ee6a49e752ee27c1931c1820a2861dcb1dff362d2efabe1d577",
+      "png_sha256": "e8a0244505844302df4c97da9230f56e5134dae315a710c21b20ea618f7007dc"
+    },
+    {
+      "id": "bicycle-rack",
+      "kind": "object",
+      "dimensions_m": [
+        1.7999999523162842,
+        0.7599999830126762,
+        0.8659992106258869
+      ],
+      "triangles": 3516,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/three-loop-bicycle-rack-3a1b8cc5",
+      "npz_sha256": "99ffd119daad85d9d2a5bb0200a65f521623b367a711d1080330ff48c20f2c4a",
+      "png_sha256": "e9a8f8bdb0849c7c9c67059c26fa7b00762a8d7af9ac7df14965183bbbe903a4"
+    },
+    {
+      "id": "sedan",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.840295469388366,
+        2.1809000074863434,
+        1.5451387965586036
+      ],
+      "triangles": 132082,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/graphite-four-door-sedan-eed96d12",
+      "npz_sha256": "1978c9f07d5857009affad896930aa72d983990ca315f5a744130dd0bca04822",
+      "png_sha256": "b04bc6bc1ff63519dbcb0c24439ea6d205a9a06fbe059c640e12082ab6222c63"
+    },
+    {
+      "id": "hatchback",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.264859830960631,
+        2.1169200241565704,
+        1.5851422569248825
+      ],
+      "triangles": 130902,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/blue-five-door-compact-hatchback-5b95b2a0",
+      "npz_sha256": "4f1eeb99c8cba919cefcbf5f832ccac4bae85d04ce51565454323704ed988695",
+      "png_sha256": "4096d74f4ab2b730463c95528513496dd74167af143d2a2a25dbb2f2dc8ca55a"
+    },
+    {
+      "id": "suv",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.760385429486632,
+        2.2357398569583893,
+        1.8251303711440414
+      ],
+      "triangles": 132132,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/sage-five-door-crossover-suv-1db314ad",
+      "npz_sha256": "8efee7b9de6679f414a0ea27d264f8ce75e3fbecd7a16f443b0c1632ed12ca10",
+      "png_sha256": "8eb29c3613462947c5ecddc6790e4b906df2487e1d318948f36616017c494e84"
+    },
+    {
+      "id": "van",
+      "kind": "vehicle",
+      "dimensions_m": [
+        5.703000031411648,
+        2.624000072479248,
+        2.650429493516472
+      ],
+      "triangles": 135896,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/high-roof-cargo-panel-van-c4d5145f",
+      "npz_sha256": "b98420d47b8f57ea752765d9ca2d6dc98de1d74bf21555b44e56c4ca25b98260",
+      "png_sha256": "f497eb3ff13dbb2ea16cebc1ec837edfd92587d8603cc86bad56b7a30f976739"
+    },
+    {
+      "id": "pickup",
+      "kind": "vehicle",
+      "dimensions_m": [
+        5.690920549444854,
+        2.320120006799698,
+        1.9601240353658795
+      ],
+      "triangles": 145816,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/crew-cab-pickup-with-open-bed-4f02e0cc",
+      "npz_sha256": "334f024131814901835c3e6e8fd5310fa40676b06178a9bcdaf03afacd1871aa",
+      "png_sha256": "c30db1ab7764ff384f75942354659b98f6b4f689f53652e3eff4a06569c00a6b"
+    },
+    {
+      "id": "bus",
+      "kind": "vehicle",
+      "dimensions_m": [
+        12.197999954223633,
+        3.0840001106262207,
+        3.427000107243657
+      ],
+      "triangles": 179088,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/12-m-low-floor-city-bus-8e3c7229",
+      "npz_sha256": "3d79e1d92217eb8c3e170fc17d7b50558f192e89ed5797fa6367b6c14b48d6d1",
+      "png_sha256": "eabecfd3511747818a01628685bbd1fabdd8d6b5321e830789ba2a28a5fce5e0"
+    },
+    {
+      "id": "truck",
+      "kind": "vehicle",
+      "dimensions_m": [
+        7.389999866485596,
+        2.7339999675750732,
+        3.306999952532351
+      ],
+      "triangles": 157848,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/7-5-t-class-box-truck-with-roll-up-door-12baea66",
+      "npz_sha256": "cb4bfb5b7e478ad8f93cb8b14ba88ccb21ce2f42fa308e9a18b70560612a4cd6",
+      "png_sha256": "4804695d1719405374dd32db3b5c593533dc39b58250acd2fade9d0e5a6d1395"
+    },
+    {
+      "id": "rb-roadster",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.096115505322814,
+        2.0915999710559845,
+        1.2200004074256867
+      ],
+      "triangles": 106474,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/generic-convertible-roadster-05aace60",
+      "npz_sha256": "4564c4ef3d87e008b1d4aa2ed08fb89d3f7fdeea7ff7344dfeec4d42bc0e4b90",
+      "png_sha256": "816bace3e46103592bce155043bfcdc8072344d2a3f54c9f0c08905aea765dec"
+    },
+    {
+      "id": "rb-sports-coupe",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.493067657575011,
+        2.0915999710559845,
+        1.28700020047836
+      ],
+      "triangles": 113490,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/generic-1990s-japanese-style-sports-coupe-ace64592",
+      "npz_sha256": "9456fe7d1d9871c7208a7c035725ee24771a440ef1c5a6249e10bc8875ea3108",
+      "png_sha256": "541234ee1e4009f93f7ee9d8eccd003952130dd1f30de84c91fedaaa8a95a843"
+    },
+    {
+      "id": "rb-compact-suv",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.492966568097472,
+        2.173499971628189,
+        1.7299936029594392
+      ],
+      "triangles": 126758,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/generic-compact-suv-9f157ee5",
+      "npz_sha256": "ea9fe5bec8fe0ce3e5da4116ffc608eeb7ffce0d33f7f2029f71ca6812878cff",
+      "png_sha256": "88b493da0d82e52b97979e8a129cc7a313ef8a269e4ebfcb26c2a01a376e962b"
+    },
+    {
+      "id": "rb-hot-hatch",
+      "kind": "vehicle",
+      "dimensions_m": [
+        4.096258556470275,
+        2.109800010919571,
+        1.4570001575630158
+      ],
+      "triangles": 123146,
+      "source": "https://www.innerscene.com/tools/library/3d-parts/generic-hot-hatch-a60561a5",
+      "npz_sha256": "e83de05a7efc7e11223a21b29b9b991a18e26baa91754bdbc10cae05769ed063",
+      "png_sha256": "20324f6e167c30a71a2c57442db1c7c80f62ca84fa87406581bff7351e313eb9"
+    }
+  ]
+}

@@ -1,0 +1,1288 @@
+{
+  "geometry_sha256": "c8a76cb0b4ea480303f129a18090c895a03be0e325dab7aada764a283e6db8f8",
+  "schema": "d4ale.crowd_backstep_diagnostic.v1",
+  "release_evidence": false,
+  "tick": 3722,
+  "source_commit": "11e83a3",
+  "rows": [
+    {
+      "actor": "person-023",
+      "xy": [
+        -100.07855224609375,
+        61.07722473144531
+      ],
+      "speed": 0.0,
+      "nearest": "person-217",
+      "distance": 0.9041720682692833,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -100.66241893819402,
+            60.93902311837263
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-147"
+          ],
+          "endpoint": [
+            -100.48240372081106,
+            60.63348608497799
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-235"
+          ],
+          "endpoint": [
+            -100.63847272207614,
+            61.292837951298935
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-147"
+          ],
+          "endpoint": [
+            -100.22022561831727,
+            60.4941907224863
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-235"
+          ],
+          "endpoint": [
+            -100.46655820780275,
+            61.53488330907527
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-059",
+      "xy": [
+        -96.980712890625,
+        61.90897750854492
+      ],
+      "speed": 0.0,
+      "nearest": "person-102",
+      "distance": 1.4041340210510658,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.88798547341311,
+            62.50176889351708
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.2388968445394,
+            62.45058718898013
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.5694664569035,
+            62.345871512568024
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.46695213909608,
+            62.26050473828151
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.41035204855967,
+            62.09522602488407
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-064",
+      "xy": [
+        -102.21653747558594,
+        63.10309600830078
+      ],
+      "speed": 0.0,
+      "nearest": "person-197",
+      "distance": 1.07026553233805,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.26317073774052,
+            63.70128104561016
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.5927862466958,
+            63.570468303412845
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.91726488866726,
+            63.62313054438373
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.77079705035742,
+            63.33287051466329
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.70458323449994,
+            63.41599032757497
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-068",
+      "xy": [
+        -101.09819793701172,
+        62.58012390136719
+      ],
+      "speed": 0.0,
+      "nearest": "person-235",
+      "distance": 0.817426507482937,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.41371086448609,
+            63.09046848358253
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.64676422020656,
+            62.82317746118847
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.0704397658349,
+            63.179481460702945
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-197"
+          ],
+          "endpoint": [
+            -101.69613622501151,
+            62.530426781290934
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -100.78649052933594,
+            63.09280166761032
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-081",
+      "xy": [
+        -98.185791015625,
+        60.56233596801758
+      ],
+      "speed": 0.0,
+      "nearest": "person-205",
+      "distance": 0.7905703210281392,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -97.61014866947332,
+            60.73155738899312
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.8062424875869,
+            61.02703255167632
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -97.61514328420479,
+            60.3769683154323
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -98.07549325593573,
+            61.15211084388763
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -97.77387050422882,
+            60.12607745258079
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-082",
+      "xy": [
+        -99.42266845703125,
+        59.17143249511719
+      ],
+      "speed": 0.0,
+      "nearest": "person-183",
+      "distance": 0.7578639411814401,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183"
+          ],
+          "endpoint": [
+            -99.0474825043365,
+            58.70320658714056
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183",
+            "person-192"
+          ],
+          "endpoint": [
+            -98.8486338932709,
+            58.996834901753296
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183"
+          ],
+          "endpoint": [
+            -99.37739436284602,
+            58.57314305312802
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183",
+            "person-192"
+          ],
+          "endpoint": [
+            -98.83519918871534,
+            59.293415521741245
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183"
+          ],
+          "endpoint": [
+            -99.66977193943576,
+            58.6246785568748
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-102",
+      "xy": [
+        -97.19771575927734,
+        60.52171325683594
+      ],
+      "speed": 0.20000000298023224,
+      "nearest": "person-191",
+      "distance": 0.9237115216704654,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-081"
+          ],
+          "endpoint": [
+            -97.78808328406666,
+            60.414632980061306
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.62450503104219,
+            60.0999895113503
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-081"
+          ],
+          "endpoint": [
+            -97.7454291757019,
+            60.76668267016859
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-196"
+          ],
+          "endpoint": [
+            -97.37007344795843,
+            59.94700217537629
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.56093490951636,
+            60.99928194184328
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-103",
+      "xy": [
+        -101.23309326171875,
+        61.52152633666992
+      ],
+      "speed": 0.0,
+      "nearest": "person-235",
+      "distance": 0.6715153876142347,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-212"
+          ],
+          "endpoint": [
+            -101.73769201171787,
+            61.19690332223728
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.46626063954173,
+            60.968685515167785
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.83285252312211,
+            61.53852128771087
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.17267087788684,
+            60.92457647652079
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-197"
+          ],
+          "endpoint": [
+            -101.75128371730224,
+            61.82398071627481
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-147",
+      "xy": [
+        -100.8000717163086,
+        60.217044830322266
+      ],
+      "speed": 0.0,
+      "nearest": "person-183",
+      "distance": 1.0112417179920536,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.33614735592684,
+            60.48653120958453
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.39467748970394,
+            60.13677046177959
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.0903505782381,
+            60.74215261194134
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.283401791865,
+            59.86152825115522
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -100.80306530259534,
+            60.817037362310074
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-183",
+      "xy": [
+        -99.89656829833984,
+        59.76285171508789
+      ],
+      "speed": 0.0,
+      "nearest": "person-082",
+      "distance": 0.7578639411814401,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-082",
+            "person-147"
+          ],
+          "endpoint": [
+            -100.2717542510346,
+            60.231077623064515
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-082",
+            "person-147"
+          ],
+          "endpoint": [
+            -100.4706028621002,
+            59.93744930845178
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-023",
+            "person-082"
+          ],
+          "endpoint": [
+            -99.94184239252507,
+            60.36114115707706
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-082",
+            "person-147"
+          ],
+          "endpoint": [
+            -100.48403756665576,
+            59.64086868846383
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-082"
+          ],
+          "endpoint": [
+            -99.64946481593533,
+            60.30960565333028
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-191",
+      "xy": [
+        -96.28883361816406,
+        60.68656539916992
+      ],
+      "speed": 0.0,
+      "nearest": "person-242",
+      "distance": 0.7000965858353149,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -96.67731020250076,
+            61.14382456356369
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -96.86764512434145,
+            60.844607293352006
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.35126923320976,
+            61.28330805222387
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102",
+            "person-242"
+          ],
+          "endpoint": [
+            -96.87255782284711,
+            60.54776319145283
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.05753235732058,
+            61.240189573797636
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-192",
+      "xy": [
+        -98.41804504394531,
+        59.36789321899414
+      ],
+      "speed": 0.0,
+      "nearest": "person-082",
+      "distance": 1.0236527820245958,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.8291988468399,
+            59.48304597039197
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.99706944013761,
+            59.79542045906047
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.86702917140258,
+            59.13044531269475
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-081"
+          ],
+          "endpoint": [
+            -98.25357167239916,
+            59.94491012520421
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -98.04832171324503,
+            58.895341995595146
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-196",
+      "xy": [
+        -96.96463012695312,
+        59.2735595703125
+      ],
+      "speed": 0.0,
+      "nearest": "person-232",
+      "distance": 0.8970752695916527,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -96.78899527939527,
+            59.84727761981358
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-102"
+          ],
+          "endpoint": [
+            -97.14361801054606,
+            59.84624040422169
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.49572685354272,
+            59.64789861474283
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.39626458962917,
+            59.69032292118487
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.37366109299825,
+            59.37726878353121
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-197",
+      "xy": [
+        -102.13335418701172,
+        62.036067962646484
+      ],
+      "speed": 0.0,
+      "nearest": "person-103",
+      "distance": 1.0369295147077051,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.65427344672442,
+            62.33379791555747
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.73139838156044,
+            61.98766195716602
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-064"
+          ],
+          "endpoint": [
+            -102.39517642752955,
+            62.57592823565259
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.63498026813829,
+            61.70687003626542
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-064"
+          ],
+          "endpoint": [
+            -102.10430201744826,
+            62.63536419277283
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-205",
+      "xy": [
+        -98.94426727294922,
+        60.3393669128418
+      ],
+      "speed": 0.0,
+      "nearest": "person-081",
+      "distance": 0.7905703210281392,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183"
+          ],
+          "endpoint": [
+            -99.5199096191009,
+            60.17014549186626
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-183"
+          ],
+          "endpoint": [
+            -99.32381580098732,
+            59.874670329183054
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -99.51491500436943,
+            60.524734565427075
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -99.0545650326385,
+            59.74959203697175
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-217"
+          ],
+          "endpoint": [
+            -99.3561877843454,
+            60.77562542827859
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-212",
+      "xy": [
+        -102.27262115478516,
+        60.797603607177734
+      ],
+      "speed": 0.0,
+      "nearest": "person-197",
+      "distance": 1.2462701344730338,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.33966936395964,
+            60.20136159452977
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.99129486496919,
+            60.267645572368956
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.66462199449636,
+            60.34336210569893
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -101.77165869236552,
+            60.4673966853144
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -102.83440923246495,
+            60.58690440030488
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-217",
+      "xy": [
+        -99.19869232177734,
+        61.28548812866211
+      ],
+      "speed": 0.0,
+      "nearest": "person-023",
+      "distance": 0.9041720682692833,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -98.61482562967707,
+            61.42368974173479
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -98.79484084706003,
+            61.72922677512943
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-081"
+          ],
+          "endpoint": [
+            -98.63877184579495,
+            61.06987490880849
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -99.05701894955382,
+            61.86852213762112
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-081",
+            "person-205"
+          ],
+          "endpoint": [
+            -98.81068636006835,
+            60.82782955103215
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-232",
+      "xy": [
+        -97.22722625732422,
+        58.41577911376953
+      ],
+      "speed": 0.0,
+      "nearest": "person-196",
+      "distance": 0.8970752695916527,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.40286110488208,
+            57.84206106426845
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.04823837373128,
+            57.84309827986034
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.69612953073462,
+            58.0414400693392
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -96.79559179464817,
+            57.99901576289716
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": false,
+          "frozen_body_clear": true,
+          "blockers": [],
+          "endpoint": [
+            -97.8181952912791,
+            58.312069900550824
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "person-235",
+      "xy": [
+        -100.66835021972656,
+        61.88484191894531
+      ],
+      "speed": 0.10000000149011612,
+      "nearest": "person-103",
+      "distance": 0.6715153876142347,
+      "options": [
+        {
+          "angle": 0.0,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-103"
+          ],
+          "endpoint": [
+            -100.16375146972744,
+            62.20946493337795
+          ]
+        },
+        {
+          "angle": 0.6,
+          "static_clear": false,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-103"
+          ],
+          "endpoint": [
+            -100.43518284190358,
+            62.43768274044745
+          ]
+        },
+        {
+          "angle": -0.6,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-103"
+          ],
+          "endpoint": [
+            -100.0685909583232,
+            61.86784696790436
+          ]
+        },
+        {
+          "angle": 1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-068",
+            "person-103"
+          ],
+          "endpoint": [
+            -100.72877260355847,
+            62.48179177909444
+          ]
+        },
+        {
+          "angle": -1.1,
+          "static_clear": true,
+          "frozen_body_clear": false,
+          "blockers": [
+            "person-023",
+            "person-103"
+          ],
+          "endpoint": [
+            -100.15015976414307,
+            61.582387539340424
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Frozen-neighbour geometry diagnostic; not a dynamic replay or complete support/QA proof.",
+    "The failed simulator did not preserve every job route and phase. This does not claim which option every actor attempted."
+  ],
+  "inputs_sha256": {
+    "/data/1010zzm/drone4d-activities-20261022/build-snapshots/population-handoff-v1/events/mixed-fleet-candidate/v16.partial.npz": "9b76bca76e5b0545a02fb05f4bf30d140b0bcc7aec417336df34726a9ab4a56a",
+    "/data/1010zzm/drone4d-activities-20261022/build-snapshots/population-handoff-v1/events/mixed-fleet-candidate/v16.initial-plans.json": "9a18f77bc21f5c658efdbb97c83dd1945a25809d003d48641ead6787e40c227b",
+    "/data/1010zzm/drone4d-activities-20261022/probe-crowd-backsteps-v2.py": "1cff77f302cedc02cf37fac7d3ba40f914777113a8f75a3042bc289cc1fdeeac"
+  }
+}

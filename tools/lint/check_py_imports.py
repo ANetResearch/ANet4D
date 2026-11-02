@@ -87,8 +87,8 @@ def _api_whitelist() -> tuple[str, ...]:
 _B = "AWR-10 §3.3 rule 2"
 # D3 packages and their paths (AWR-05 §4.8, §12.2)
 D3_PACKAGES = ("awr.world.glb", "awr.world.mesh", "awr.sim.events", "awr.phys", "awr.sensorsvc", "awr.agentsdk", "awr.bench",
-               "awr.api.bench_main")
-_D3_PATHS = ("world/glb/", "world/mesh/", "sim/events/", "phys/", "sensorsvc/", "agentsdk/", "bench/", "api/bench_main.py")
+               "awr.api.bench_main", "awr.life")
+_D3_PATHS = ("world/glb/", "world/mesh/", "sim/events/", "phys/", "sensorsvc/", "agentsdk/", "bench/", "api/bench_main.py", "life/")
 _M08_CORE = ("sim/runtime/", "sim/fleet/", "sim/core/", "sim/backends/")
 _PURE = ("environment/conventions/", "environment/weather/", "environment/wind/", "environment/atmosphere/", "environment/io/",
          "swarm/", "world/")

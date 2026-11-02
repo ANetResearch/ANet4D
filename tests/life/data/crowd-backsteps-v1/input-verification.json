@@ -1,0 +1,32 @@
+{
+  "source_manifest_sha256": "0f5af930bd772cfab7905045e1b3ba4fe3c92f87843ed780f352c0c9a80451bd",
+  "checked_inputs": {
+    "d4ale/civil/body.py": "1c797337e3b3ccc1e5871df5e79317404af475b811048fdd81e844c3142e48e2",
+    "d4ale/civil/walking.py": "46fae7bfd67492a4c28ca2ef4ce3abb115d4346ff6989e5068c70e59ff88f0fc",
+    "d4ale/civil/collision.py": "c7c97e49de97e63a410dcbb39700bd08ebd4a1cc56e2dfc35d5dee49065f39d0",
+    "d4ale/civil/surface.py": "be56f8bd57160dcb1c06ce4a1dd7b0aebeb0061c88f15eb7fac91fff7b03b64e",
+    "diagnostic-config.json": "77d79ad38aad1b780626f9bb03e15b9fb2133d0648626b32f9bda045032c4b66",
+    "docs/audit/mixed-fleet-v1/parking-semantics-v2.json": "8c95c56928dcb40423684b2cef9f9d28f29c9bcbf514833a5030bbd614d6c774",
+    "cache/civil/crop-city-002/sumo/net.net.xml": "cea313a5e0452cd906cdec114bb0a7cabe9639be0792ed524cbe534f31ed0c92",
+    ".cache/support-parking-measured-v2/meta.json": "6e55910fe632f3ba775b2cfbf7b768b1d175aefe6ff97d9e02a98ed36352037a",
+    ".cache/support-parking-measured-v2/ground.npy": "8f3db70229668b5e3e9303226cb419754ba106901d2906f55bd71493ced406e6",
+    ".cache/support-parking-measured-v2/walk_person.npy": "68c3b79d3c1d569e35c1f175cbfe99bce4fe0a311e2248fc9bce262cf917277e",
+    ".cache/support-parking-measured-v2/walk_vehicle.npy": "43158427cd85e395015187b55ca78e41e046f7fa269991238b2bc397e1864fe8"
+  },
+  "checked_human_assets": {
+    "human-1": "dbc92649b01737136ac844bd31a58de25c73da71ce18f52534cf9951daa90f62",
+    "human-2": "3e7121e64c7d54e3582f009e2c35fbdd5303646de1ea392b2f5c663f44e734f1",
+    "human-3": "86596c30b2c4d7121afbcadea20c8d09f304d419c07eb4cd2b7cd76682db30e3",
+    "human-4": "d87a74ffb00621fb3e9498054aae6e7193166dc82051d5308768768b946473c4",
+    "human-5": "84a312c4e4bcc4f9ec6c7dca4850a49aeb9e155e7e07230da55ce537cf067c68",
+    "human-6": "c61bab1b19a59ebc3e66582c74989ef16a7754b55040239f84094351d052b11c",
+    "human-7": "7e443922738ee45d1e35dcb55d4b9b05fa1295a366c42b1e9c62c15e8ecdd193",
+    "human-8": "f1bd9efe4df87b3f603ae6021bfa167fe2f4989ca347036be1437b8a4974abff",
+    "human-9": "bbf25e551dac53e84618494297a14d14538b5ee7de43a1e4f0bc7ea39f91a781",
+    "human-10": "4bd78da45c155bb748625ff082e07dea5aa81945cf8ac59f91e93c859282d074",
+    "human-11": "12917f9f9ad23e23464103871f58b475ba0fbf39208ede3ac73cfe482f91c668",
+    "human-12": "1e231bb616bce772fc33b4e159e75c2e3b3f7f736f4bcd6e1c8ccdd5c0773f3d"
+  },
+  "match_original_build": true,
+  "release_evidence": false
+}

@@ -1,0 +1,251 @@
+{
+  "schema": "d4ale.activity_graph.v1",
+  "description": "Topology diagnostic, not benchmark-admitted geometry",
+  "nodes": {
+    "h0": [
+      0,
+      0
+    ],
+    "b0": [
+      10,
+      0
+    ],
+    "a0": [
+      10,
+      2
+    ],
+    "shop": [
+      180,
+      120
+    ],
+    "b1": [
+      170,
+      100
+    ],
+    "a1": [
+      170,
+      102
+    ],
+    "park": [
+      10,
+      250
+    ],
+    "b2": [
+      10,
+      230
+    ],
+    "a2": [
+      10,
+      232
+    ],
+    "junction": [
+      100,
+      100
+    ],
+    "hw": [
+      -20,
+      40
+    ]
+  },
+  "edges": [
+    {
+      "from": "b0",
+      "to": "junction",
+      "modes": [
+        "drive",
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "junction",
+      "to": "b1",
+      "modes": [
+        "drive",
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "junction",
+      "to": "b2",
+      "modes": [
+        "drive",
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "h0",
+      "to": "a0",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "a0",
+      "to": "b0",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "a1",
+      "to": "b1",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "a1",
+      "to": "shop",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "a2",
+      "to": "b2",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "a2",
+      "to": "park",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    },
+    {
+      "from": "hw",
+      "to": "h0",
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true
+    }
+  ],
+  "places": [
+    {
+      "id": "home",
+      "node": "h0",
+      "kind": "home",
+      "slots": [
+        "home#0"
+      ],
+      "parking": [
+        "home-bay"
+      ]
+    },
+    {
+      "id": "shop",
+      "node": "shop",
+      "kind": "shop",
+      "slots": [
+        "shop#0"
+      ],
+      "parking": [
+        "shop-bay"
+      ]
+    },
+    {
+      "id": "park",
+      "node": "park",
+      "kind": "park",
+      "slots": [
+        "park#0"
+      ],
+      "parking": [
+        "park-bay"
+      ]
+    },
+    {
+      "id": "home-bay",
+      "node": "b0",
+      "access": "a0",
+      "kind": "berth",
+      "slots": [
+        "home-bay#0"
+      ]
+    },
+    {
+      "id": "shop-bay",
+      "node": "b1",
+      "access": "a1",
+      "kind": "berth",
+      "slots": [
+        "shop-bay#0"
+      ]
+    },
+    {
+      "id": "park-bay",
+      "node": "b2",
+      "access": "a2",
+      "kind": "berth",
+      "slots": [
+        "park-bay#0"
+      ]
+    },
+    {
+      "id": "walker-home",
+      "node": "hw",
+      "kind": "home",
+      "slots": [
+        "walker-home#0"
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "purpose": "collect_groceries",
+      "kinds": [
+        "shop"
+      ],
+      "dwell_s": [
+        60,
+        120
+      ],
+      "recurrence_s": 400,
+      "modes": [
+        "walk",
+        "car"
+      ]
+    },
+    {
+      "purpose": "outdoor_rest",
+      "kinds": [
+        "park"
+      ],
+      "dwell_s": [
+        90,
+        180
+      ],
+      "recurrence_s": 500,
+      "modes": [
+        "walk",
+        "car"
+      ]
+    }
+  ],
+  "population": [
+    {
+      "id": "resident-000",
+      "home": "home",
+      "vehicle": "vehicle-000",
+      "berth": "home-bay"
+    },
+    {
+      "id": "resident-001",
+      "home": "walker-home"
+    }
+  ],
+  "max_wait_s": 600,
+  "capacity_note": "Single-slot shared destinations can be occupied by the other resident for several minutes. Topology-only continuation timeout is 600 s; physical town thresholds are unchanged."
+}

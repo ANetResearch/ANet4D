@@ -1,0 +1,231 @@
+{
+  "schema": "d4ale.testbed_config.v1",
+  "seed": 20261102,
+  "duration_s": 1500,
+  "people": 30,
+  "vehicles": 6,
+  "props": 12,
+  "human_assets": 12,
+  "vehicle_assets": [
+    "sedan",
+    "hatchback",
+    "suv",
+    "hatchback",
+    "hatchback",
+    "hatchback"
+  ],
+  "prop_assets": [
+    "bench",
+    "litter-bin",
+    "hydrant",
+    "parked-bicycle",
+    "bollard",
+    "bicycle-rack"
+  ],
+  "walking_network": true,
+  "walking_step_m": 0.5,
+  "visual_identity": true,
+  "early_motion_gate": true,
+  "lane_network": "cache/civil/crop-city-002/sumo/net.net.xml",
+  "activity_note": "Integration preview at an explicitly reduced population (30 pedestrians, 6 admitted curb vehicles, 12 props), not the requested full-density benchmark. All requested preview bodies must be admitted; physical and stall checks remain enabled.",
+  "outdoor_places": "docs/audit/sandbox/town-places-v3.json",
+  "delivery": null,
+  "parking_rules": {
+    "crossing_margin_m": 5.0,
+    "min_free_width_m": 3.0
+  },
+  "life": {
+    "warmup_s": 120,
+    "departure_spread_s": 60,
+    "planning_speed_mps": 1.05,
+    "planning_detour": 1.45,
+    "leg_distance_m": [
+      40,
+      450
+    ],
+    "destinations_per_person": [
+      2,
+      3
+    ],
+    "chain_extra_s": 300,
+    "dwell_s": {
+      "rest_in_park": [
+        120,
+        480
+      ],
+      "watch_at_pitch": [
+        180,
+        600
+      ],
+      "wait_outside_place_of_worship": [
+        120,
+        420
+      ],
+      "wait_outside_school": [
+        90,
+        360
+      ],
+      "wait_outside_cafe": [
+        180,
+        480
+      ],
+      "wait_outside_post_office": [
+        60,
+        240
+      ],
+      "wait_outside_townhall": [
+        60,
+        240
+      ],
+      "wait_outside_courthouse": [
+        60,
+        240
+      ],
+      "call_at_household": [
+        120,
+        360
+      ],
+      "pause_at_home_street": [
+        30,
+        150
+      ]
+    },
+    "vehicles": {
+      "min_trip_m": 60.0,
+      "trip_share": 1.0,
+      "behavior": "curb_v1",
+      "merge_m": 18.0,
+      "initial_parking_activity_s": [
+        120,
+        1800
+      ]
+    },
+    "unavailable": [
+      {
+        "activity": "indoor_stays",
+        "reason": "No mapped building has a verified entrance (town-places verified_entrance=false); stays are represented at measured outdoor waiting points and never as being inside."
+      },
+      {
+        "activity": "through_traffic_and_stage_entry_exit",
+        "reason": "No supported lane chain reaches the stage boundary on the v1 support surface (docs/audit/sandbox/lane-*.json)."
+      },
+      {
+        "activity": "vehicle_return_trips_and_circulation",
+        "reason": "The supported lane graph has no strongly connected core and the three-point-turn probe found no return fragment (docs/audit/sandbox/turn-probe.json); each resident vehicle can drive a validated chain once."
+      },
+      {
+        "activity": "driver_alighting_and_boarding_for_resident_vehicles",
+        "reason": "Occupants of resident vehicles are not represented as separate persons; only the delivery round models alighting and boarding at verified kerb points."
+      },
+      {
+        "activity": "public_transport",
+        "reason": "No bus service is simulated; mapped bus stations are not used as waiting purposes."
+      },
+      {
+        "activity": "cycling",
+        "reason": "Bicycles are static street objects; there is no riding animation or contact/stability solver."
+      },
+      {
+        "activity": "seated_rest",
+        "reason": "No seated pose exists in the human assets; rest is standing at the waiting point."
+      }
+    ],
+    "places": {
+      "stand_clearance_m": 0.5,
+      "travel_clearance_m": 0.75,
+      "slot_radius_m": {
+        "park": 5.0,
+        "pitch": 10.0,
+        "default": 9.0
+      },
+      "slot_spacing_m": 2.0,
+      "max_slots": 6,
+      "street_spacing_m": 3.0,
+      "household_approach_m": [
+        2.5,
+        8.0
+      ]
+    },
+    "site_load_per_slot": 2.0,
+    "full_site_retry_s": 15.0,
+    "behavior": "activities_v1",
+    "activity_engine": {
+      "modes": [
+        "walk"
+      ],
+      "retry_s": 15,
+      "max_wait_s": 120,
+      "errands_before_home": 2
+    }
+  },
+  "life_gates": {
+    "person_unexplained_static_share_max": {
+      "threshold": 0.05,
+      "rationale": "A stationary pedestrian must be in a recorded stay (dwell, queue, courtesy); purposeless standing at a scripted start or end misrepresents daily life and distorts search and tracking targets."
+    },
+    "person_pre_departure_share_max": {
+      "threshold": 0.005,
+      "rationale": "The recording starts in an ongoing day; nobody stands at a start point waiting for a scheduled first departure."
+    },
+    "person_finished_idle_share_max": {
+      "threshold": 0.005,
+      "rationale": "Daily chains last beyond the recording; no resident stands still because its script ended."
+    },
+    "person_finished_itineraries_max": {
+      "threshold": 0,
+      "rationale": "Counted per resident: no resident daily chain ends inside the recording. The courier's per-stop errands are judged by courier_board_after_stop_s_max."
+    },
+    "person_longest_stall_s_max": {
+      "threshold": 60,
+      "rationale": "Unplanned no-progress inside a trip longer than one minute is a navigation failure, not behaviour."
+    },
+    "person_blockages_max": {
+      "threshold": 0,
+      "min_size": 7,
+      "min_duration_s": 10,
+      "min_moving_share": 0.5,
+      "rationale": "Groups of at least seven people linked by gaps of at most 1.5 m (more than one outdoor waiting site holds at 2 m slot spacing) are followed second by second. Such a group is a blockage when it lasts at least 10 s and its travelling members move less than half of that time; short crossings and people passing a waiting queue are not blockages. Duration, size and the distance covered by the travelling members of every group episode are reported."
+    },
+    "person_moving_min_per_minute": {
+      "threshold": 5,
+      "rationale": "Tracking tasks may start in any minute and need several walking candidates at every moment."
+    },
+    "zones_with_moving_person_every_minute_min": {
+      "threshold": 1,
+      "rationale": "Search zones used by tasks must contain walking people throughout; the walking network is fragmented, so not every zone can."
+    },
+    "courier_board_after_stop_s_max": {
+      "threshold": 10,
+      "rationale": "After each delivery the courier walks back to the van door and boards; a courier who completed a stop but does not board within 10 s is stuck beside the van and the round stops."
+    },
+    "vehicle_unrecorded_parking_share_max": {
+      "threshold": 0.0,
+      "rationale": "Every parked vehicle-tick carries a recorded parking purpose."
+    },
+    "vehicle_ineffective_trips_max": {
+      "threshold": 0,
+      "min_distance_m": 50,
+      "max_stop_s": 60,
+      "rationale": "Every vehicle trip is a journey to a destination: it ends with a recorded parking purpose, covers at least 50 m (chains are planned with min_trip_m 60 and a destination may step back to keep a pedestrian passage open) and is never held up for more than one minute. Trips begun before the recording are not judged on distance; trips still under way at its end are judged on their stops. Delivery legs are judged by their stops, since their length is the planned stop spacing. Raw trip distance, moving time, stops and departures per minute are reported; no single median replaces the per-trip judgement."
+    },
+    "vehicle_longest_stop_in_trip_s_max": {
+      "threshold": 60,
+      "rationale": "A trip may pause for crossing pedestrians or an oncoming vehicle; a vehicle standing inside its trip for more than a minute is blocked, not driving."
+    }
+  },
+  "shared_streets": {
+    "carriageway_cost": 2.0,
+    "carriageway_centre_cost": 1.0,
+    "centre_depth_m": 3.0,
+    "note": "Residential streets of this town mostly lack a continuous sidewalk (houses and walls meet the road edge). Pedestrians may use the carriageway at a higher path cost that grows towards the road centre, so routes keep to sidewalks and road edges and cross roads directly. Support, body-disk and clearance tests are unchanged."
+  },
+  "diagnostic_only_metrics": {
+    "vehicle_moving_minutes": {
+      "previous_gate": {
+        "threshold": 10,
+        "rationale": "Diagnostic preview has six supported one-way resident car trips. Require motion in at least 10 distinct minutes; the production 20-minute circulation gate remains unmet and this is not a full benchmark release."
+      },
+      "reason": "Preview has six vehicles on one-way verified curb trips. Do not stretch departure times with recording duration to meet a traffic-density target. Report observed coverage; full population and benchmark traffic gates remain unchanged in town-candidate.json."
+    }
+  }
+}

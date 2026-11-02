@@ -41,6 +41,8 @@ dev = ["ruff==0.16.9", "pre-commit==4.6.2"]
 fetch = ["py7zr==1.1.3"]                                    # make fetch-data 解压 7z（ADR-038 的 fetch 组；19 §8.2）
 geo-worker = ["open3d==0.20.0"]                             # V0.2 起；D1 不安装，不进入锁文件
 px4 = ["mavsdk==4.0.0"]                                     # V0.2 起；D1 不安装，不进入锁文件
+life = ["shapely==2.2.0", "pillow==13.0.0", "rsplan==1.0.10", "py-trees==2.6.0"]   # 目标生活引擎 awr.life（仓库环境；D1 不安装，不进入锁文件）
+life-ext = ["eclipse-sumo==1.28.0", "jupedsim==1.4.2", "contourpy==1.3.3"]   # awr.life.ambient 的外部求解器后端（SUMO、JuPedSim）；D1 不安装，不进入锁文件
 
 [project.scripts]
 worldpkg = "awr.world.package.cli:main"
@@ -80,6 +82,10 @@ allowed-confusables = ["（", "）", "，", "：", "；", "！", "？", "｜", "
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B011"]
+# 目标生活引擎 awr.life 及其测试（2026-11-02 自 CHIMERA 基准移植，docs/impl/life-engine-v1.zh-CN.md §2）：只做格式化与安全修复，
+# 不做改变语义的自动改写；下列规则在该路径豁免，待清理工作包逐处处理后撤销本条
+"python/awr/life/**" = ["B007", "B008", "B020", "B023", "E741", "F841", "PERF401", "RUF005", "RUF012", "RUF046", "RUF059", "RUF007", "SIM102", "SIM103", "SIM108", "SIM114", "SIM115", "SIM117", "SIM201"]
+"tests/life/**" = ["B007", "B008", "B017", "B023", "E741", "F841", "PERF401", "RUF005", "RUF012", "RUF046", "RUF059", "RUF007", "SIM102", "SIM103", "SIM108", "SIM114", "SIM115", "SIM117", "SIM201", "F811"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["awr"]

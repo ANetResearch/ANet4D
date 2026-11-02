@@ -1,0 +1,52 @@
+# crop-city-002：Oryahovo 镇中心 25 min 民事生活仿真（civil engine）
+schema: awr.life.civil.config.v1
+event_id: crop-city-002
+version: 1
+world: oryahovo-crop1
+seed: 20261020
+stage: [-300, -260, 320, 260]        # 舞台范围（world ENU，m），与导航栅格一致
+time_origin_utc: "2026-06-15T05:30:00Z"   # 当地时间（UTC+3）08:30
+osm: worlds-meta/oryahovo-crop1/osm_world.json
+
+population:
+  active_household_frac: 0.55
+  car_ownership: 0.55
+  bike_ownership: 0.18
+  dog_ownership: 0.12
+  fleet:
+    delivery_vans: 3
+    taxis: 2
+    buses: 2
+    police_cars: 1
+    ambulance: true
+    through_cars: 140
+    commuters_in: 30
+    motorcycles: 5
+    construction_workers: 3
+    vendors: 1
+    tourist_group: 5
+    foot_police: 2
+
+schedule:
+  warmup_s: 600
+  duration_s: 1500
+  incidents:
+    breakdown: 1
+    double_parking: 2
+    jaywalk_frac: 0.08
+    speeding: 2
+    drop_object: 1
+    dog_off_leash: 2
+    gathering: 1
+    meetings: 4
+    deliveries: 8
+    taxi_rides: 3
+    ambulance: 1
+    roadworks: 1
+    vendor_customers: 5
+
+environment:
+  interpolation: smooth
+  keyframes:
+    - {t_ms: 0, wind_mps: 2.0, wind_dir_deg: 250.0, gust_sigma_mps: 0.5, rain_mm_h: 0.0, visibility_m: 12000.0, fog: 0.0, cloud: 0.4}
+    - {t_ms: 1500000, wind_mps: 3.0, wind_dir_deg: 260.0, gust_sigma_mps: 0.7, rain_mm_h: 0.0, visibility_m: 12000.0, fog: 0.0, cloud: 0.5}

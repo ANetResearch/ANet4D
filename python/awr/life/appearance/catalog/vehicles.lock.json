@@ -1,0 +1,58 @@
+[
+  {
+    "id": "sedan",
+    "path": "assets/sources/sedan.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/graphite-four-door-sedan-eed96d12",
+    "download": "https://www.innerscene.com/api/library/graphite-four-door-sedan-eed96d12/download",
+    "sha256": "feb0be31d153ddb42dc15ae52a651e214e85ab67e31bec4282b00f9d47c9b597"
+  },
+  {
+    "id": "hatchback",
+    "path": "assets/sources/hatchback.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/blue-five-door-compact-hatchback-5b95b2a0",
+    "download": "https://www.innerscene.com/api/library/blue-five-door-compact-hatchback-5b95b2a0/download",
+    "sha256": "107410e01453abbce452fabbe6d51436fb98a0920672643a893263a8861873d7"
+  },
+  {
+    "id": "suv",
+    "path": "assets/sources/suv.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/sage-five-door-crossover-suv-1db314ad",
+    "download": "https://www.innerscene.com/api/library/sage-five-door-crossover-suv-1db314ad/download",
+    "sha256": "d8de49cef044f82816f9c1cb99597cb6fb6090aa90bee1ab182c64856fe210d5"
+  },
+  {
+    "id": "van",
+    "path": "assets/sources/van.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/high-roof-cargo-panel-van-c4d5145f",
+    "download": "https://www.innerscene.com/api/library/high-roof-cargo-panel-van-c4d5145f/download",
+    "sha256": "b0d26a40bdb39c67224259213faafef71f9396c0ba658a1bb68cc1626a34ef36"
+  },
+  {
+    "id": "pickup",
+    "path": "assets/sources/pickup.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/crew-cab-pickup-with-open-bed-4f02e0cc",
+    "download": "https://www.innerscene.com/api/library/crew-cab-pickup-with-open-bed-4f02e0cc/download",
+    "sha256": "47aa7193686d426401766c89d3d4bcb78e5b880ab7b15d2050639ff9d14a00c4"
+  },
+  {
+    "id": "bus",
+    "path": "assets/sources/bus.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/12-m-low-floor-city-bus-8e3c7229",
+    "download": "https://www.innerscene.com/api/library/12-m-low-floor-city-bus-8e3c7229/download",
+    "sha256": "70a14915779ce5438c78ecea1c9a55af3412fd5bb9c83735c90a698779791f3a"
+  },
+  {
+    "id": "truck",
+    "path": "assets/sources/truck.glb",
+    "license": "CC0-1.0",
+    "source": "https://www.innerscene.com/tools/library/3d-parts/7-5-t-class-box-truck-with-roll-up-door-12baea66",
+    "download": "https://www.innerscene.com/api/library/7-5-t-class-box-truck-with-roll-up-door-12baea66/download",
+    "sha256": "2ad07a090e66c58c637599df23cb6b71fc6cae3ba58d37460b942f9ce8b93a27"
+  }
+]

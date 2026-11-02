@@ -88,7 +88,7 @@ export function checkManifests(R, bom) {
 
 const pyName = (n) => n.toLowerCase().replace(/[_.]/g, '-')
 // extras that are not part of the D1 lock (pyproject.toml comments; AWR-11 §3.6)
-const PY_UNLOCKED_EXTRAS = new Set(['geo-worker', 'px4'])
+const PY_UNLOCKED_EXTRAS = new Set(['geo-worker', 'px4', 'life', 'life-ext'])
 
 /** PyPI direct dependencies: [project] dependencies, the locked optional-dependency groups and requirements.in pins. */
 export function pythonDirectDeps(pyproject, requirementsIn) {
