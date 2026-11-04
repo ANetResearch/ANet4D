@@ -1,0 +1,48 @@
+# vehicles/ground/osr/params.yaml —— profile osr 1.0.0（awr.vehicle.ground.v1）
+# JPL 开源漫游车级六轮车：六轮摇臂转向架（rocker-bogie）、四个角轮转向、10 个电机、约 1.6 m/s（项目文档 open-source-rover.readthedocs.io）。
+# 在单轨模型里按"四角阿克曼 + 中轮直行"的等效自行车处理：lf、lr 取前后角轮到质心的距离。质量、几何、轮胎为 D 级模拟参考值。
+schema: awr.vehicle.ground.v1
+profile_version: 1.0.0
+id: osr
+display_name: "Open-source-rover-class 6-wheel rover"
+display_name_zh: "六轮漫游车（JPL 开源漫游车级）"
+kind: ugv
+status: placeholder
+reference: "JPL Open Source Rover（项目文档）"
+drive: {type: corner_steer, wheels: 6, driven: all, body: flu}
+mass_kg: {value: 12.0, conf: D, src: "模拟参考值：铝结构 + 10 电机 + 电池"}
+inertia_zz_kgm2: {value: 0.61, conf: D, src: "派生：m·(l² + w²)/12，l 0.60、w 0.50"}
+geometry:
+  lf_m: {value: 0.23, conf: D, src: "模拟参考值：前角轮到质心"}
+  lr_m: {value: 0.23, conf: D, src: "模拟参考值：后角轮到质心（等效轴距 0.46 m）"}
+  track_m: {value: 0.42, conf: D, src: "模拟参考值"}
+  cg_height_m: {value: 0.18, conf: D, src: "模拟参考值"}
+  wheel_radius_m: {value: 0.064, conf: D, src: "模拟参考值：5 in 轮"}
+  collision_radius_m: {value: 0.40, conf: D, src: "派生：半对角线 √(0.60² + 0.50²)/2"}
+  size_m: {value: {l: 0.60, w: 0.50, h: 0.45}, conf: D, src: "模拟参考值"}
+tire:
+  model: linear_st
+  mu: {value: 0.8, conf: D, src: "模拟参考值：橡胶轮对土路 / 混凝土"}
+  c_sf: {value: 5.0, conf: D, src: "模拟参考值：f1tenth_gym 同量级"}
+  c_sr: {value: 5.0, conf: D, src: "模拟参考值：f1tenth_gym 同量级"}
+actuation:
+  steer_max_rad: {value: 0.6, conf: D, src: "模拟参考值：角轮转向行程"}
+  steer_rate_max_rad_s: {value: 1.0, conf: D, src: "模拟参考值：舵机"}
+  v_max_mps: {value: 1.6, conf: C, src: "open-source-rover.readthedocs.io：~1.6 m/s，随电机选型变化"}
+  v_min_mps: {value: -0.8, conf: D, src: "模拟参考值"}
+  a_max_mps2: {value: 1.0, conf: D, src: "模拟参考值"}
+  a_brake_mps2: {value: 2.0, conf: D, src: "模拟参考值"}
+  v_switch_mps: {value: 1.6, conf: D, src: "模拟参考值：无功率段限制"}
+  k_speed_hz: {value: 2.0, conf: D, src: "模拟参考值"}
+resistance:
+  c_rr: {value: 0.02, conf: D, src: "模拟参考值：土路"}
+  cda_m2: {value: 0.2, conf: D, src: "模拟参考值"}
+battery:
+  capacity_wh: {value: 180.0, conf: D, src: "模拟参考值：4S 12 Ah"}
+  p_drive_w: {value: 60.0, conf: D, src: "模拟参考值"}
+  endurance_s: {value: 7200.0, conf: D, src: "模拟参考值：约 2 h"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {wheelbase_m: 0.46, lateral_acc_max_mps2: 7.85}
+notes:
+  - "摇臂转向架的越障与六轮分载不在单轨模型里；本包只给平地与坡面行驶"

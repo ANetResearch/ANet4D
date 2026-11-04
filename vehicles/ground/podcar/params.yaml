@@ -1,0 +1,46 @@
+# vehicles/ground/podcar/params.yaml —— profile podcar 1.0.0（awr.vehicle.ground.v1）
+# OpenPodcar 级小型载人 pod 车：代步车（mobility scooter）底盘的阿克曼车，可载一人，最高 15 km/h（OpenPodcar2 论文摘要，arXiv 2604.24242）。
+# 质量、几何、轮胎为 D 级模拟参考值（典型四轮带顶棚代步车）。
+schema: awr.vehicle.ground.v1
+profile_version: 1.0.0
+id: podcar
+display_name: "OpenPodcar-class pod vehicle"
+display_name_zh: "小型载人 pod 车（OpenPodcar 级）"
+kind: ugv
+status: placeholder
+reference: "OpenPodcar2（arXiv 2604.24242 摘要）"
+drive: {type: ackermann, wheels: 4, driven: rear, body: flu}
+mass_kg: {value: 130.0, conf: D, src: "模拟参考值：带顶棚四轮代步车含电池"}
+inertia_zz_kgm2: {value: 29.7, conf: D, src: "派生：m·(l² + w²)/12，l 1.50、w 0.70"}
+geometry:
+  lf_m: {value: 0.45, conf: D, src: "模拟参考值"}
+  lr_m: {value: 0.55, conf: D, src: "模拟参考值（轴距 1.00 m）"}
+  track_m: {value: 0.60, conf: D, src: "模拟参考值"}
+  cg_height_m: {value: 0.35, conf: D, src: "模拟参考值：含座椅与顶棚"}
+  wheel_radius_m: {value: 0.15, conf: D, src: "模拟参考值：12 in 轮"}
+  collision_radius_m: {value: 0.83, conf: D, src: "派生：半对角线 √(1.50² + 0.70²)/2"}
+  size_m: {value: {l: 1.50, w: 0.70, h: 1.60}, conf: D, src: "模拟参考值"}
+tire:
+  model: linear_st
+  mu: {value: 0.9, conf: D, src: "模拟参考值：充气轮对铺装路"}
+  c_sf: {value: 6.0, conf: D, src: "模拟参考值"}
+  c_sr: {value: 6.0, conf: D, src: "模拟参考值"}
+actuation:
+  steer_max_rad: {value: 0.6, conf: D, src: "模拟参考值：舵柄转向行程"}
+  steer_rate_max_rad_s: {value: 0.8, conf: D, src: "模拟参考值：转向电机"}
+  v_max_mps: {value: 4.17, conf: A, src: "OpenPodcar2 摘要：最高 15 km/h"}
+  v_min_mps: {value: -1.0, conf: D, src: "模拟参考值"}
+  a_max_mps2: {value: 1.2, conf: D, src: "模拟参考值：代步车电机"}
+  a_brake_mps2: {value: 2.5, conf: D, src: "模拟参考值：电磁刹车"}
+  v_switch_mps: {value: 3.0, conf: D, src: "模拟参考值：功率段起点"}
+  k_speed_hz: {value: 1.5, conf: D, src: "模拟参考值"}
+resistance:
+  c_rr: {value: 0.015, conf: D, src: "模拟参考值：铺装路"}
+  cda_m2: {value: 1.0, conf: D, src: "模拟参考值：带顶棚"}
+battery:
+  capacity_wh: {value: 1200.0, conf: D, src: "模拟参考值：2 × 12 V 50 Ah"}
+  p_drive_w: {value: 400.0, conf: D, src: "模拟参考值"}
+  endurance_s: {value: 9000.0, conf: D, src: "模拟参考值：约 2.5 h"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {wheelbase_m: 1.0, lateral_acc_max_mps2: 8.83}

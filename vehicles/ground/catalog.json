@@ -1,0 +1,46 @@
+{
+  "schema": "awr.device_catalog.ground.v1",
+  "catalog_version": "1.0.0",
+  "disclaimer_zh": "参数来源逐项标注：A 级来自公开代码或论文，D 级为模拟参考值，非任何真实产品的承诺",
+  "models": [
+    {
+      "id": "f1tenth",
+      "dir": "f1tenth",
+      "profile_version": "1.0.0",
+      "display_name": "F1TENTH-class 1/10 car",
+      "display_name_zh": "1/10 自动驾驶车（F1TENTH 级）",
+      "category": "ugv",
+      "size_class": "small",
+      "reference": false,
+      "visible": true,
+      "order": 0,
+      "summary_zh": "阿克曼 1/10 车，3.74 kg，轴距 0.33 m；单轨模型参数取 f1tenth_gym 缺省值（CommonRoad 口径，A 级），是地面域模型的对拍基准"
+    },
+    {
+      "id": "osr",
+      "dir": "osr",
+      "profile_version": "1.0.0",
+      "display_name": "Open-source-rover-class 6-wheel rover",
+      "display_name_zh": "六轮漫游车（JPL 开源漫游车级）",
+      "category": "ugv",
+      "size_class": "small",
+      "reference": false,
+      "visible": true,
+      "order": 1,
+      "summary_zh": "六轮摇臂转向架、四角转向，约 1.6 m/s；结构与速度来自项目文档，质量与几何为模拟参考值"
+    },
+    {
+      "id": "podcar",
+      "dir": "podcar",
+      "profile_version": "1.0.0",
+      "display_name": "OpenPodcar-class pod vehicle",
+      "display_name_zh": "小型载人 pod 车（OpenPodcar 级）",
+      "category": "ugv",
+      "size_class": "medium",
+      "reference": false,
+      "visible": true,
+      "order": 2,
+      "summary_zh": "代步车底盘的阿克曼载人 pod，15 km/h（论文摘要）；质量与几何为模拟参考值"
+    }
+  ]
+}

@@ -392,6 +392,21 @@ __all__ = [
     "GraphV1NodesOneOf0",
     "GraphV1NodesOneOf1",
     "Grid",
+    "GroundCatalog",
+    "GroundCatalogModels",
+    "GroundProfile",
+    "GroundProfileActuation",
+    "GroundProfileBattery",
+    "GroundProfileDrive",
+    "GroundProfileFidelity",
+    "GroundProfileGeometry",
+    "GroundProfileGeometrySizeM",
+    "GroundProfileGeometrySizeMValue",
+    "GroundProfileQ",
+    "GroundProfileQpos",
+    "GroundProfileResistance",
+    "GroundProfileSensors",
+    "GroundProfileTire",
     "Imu",
     "ImuAccel",
     "ImuBaro",
@@ -4747,6 +4762,148 @@ class GraphV1NodesOneOf1(TypedDict):
     type: str
     interval_ms: list[int]
     declared: bool
+
+
+# vehicle/ground_catalog.schema.json# awr.device_catalog.ground.v1 (ground vehicle catalog)
+class GroundCatalog(TypedDict):
+    schema: Literal["awr.device_catalog.ground.v1"]
+    catalog_version: str
+    disclaimer_zh: str
+    models: list[GroundCatalogModels]
+
+
+# vehicle/ground_catalog.schema.json#/properties/models/items
+class GroundCatalogModels(TypedDict):
+    id: str
+    dir: str
+    profile_version: str
+    display_name: str
+    display_name_zh: str
+    category: Literal["ugv"]
+    size_class: Literal["small", "medium", "large"]
+    reference: bool
+    visible: bool
+    order: NotRequired[int]
+    summary_zh: str
+
+
+# vehicle/ground_profile.schema.json# awr.vehicle.ground.v1 (ground vehicle profile)
+class GroundProfile(TypedDict):
+    schema: Literal["awr.vehicle.ground.v1"]
+    profile_version: str
+    id: str
+    display_name: str
+    display_name_zh: NotRequired[str]
+    kind: Literal["ugv"]
+    status: Literal["regression", "placeholder", "identified"]
+    reference: NotRequired[str]
+    drive: GroundProfileDrive
+    mass_kg: GroundProfileQpos
+    inertia_zz_kgm2: GroundProfileQpos
+    geometry: GroundProfileGeometry
+    tire: GroundProfileTire
+    actuation: GroundProfileActuation
+    resistance: NotRequired[GroundProfileResistance]
+    battery: NotRequired[GroundProfileBattery]
+    fidelity: GroundProfileFidelity
+    model: WorldCommonRelHref
+    sensors: NotRequired[dict[str, GroundProfileSensors]]
+    derived: NotRequired[dict[str, float | None]]
+    notes: NotRequired[list[str]]
+
+
+# vehicle/ground_profile.schema.json#/properties/actuation
+class GroundProfileActuation(TypedDict):
+    steer_max_rad: GroundProfileQpos
+    steer_rate_max_rad_s: GroundProfileQpos
+    v_max_mps: GroundProfileQpos
+    v_min_mps: GroundProfileQ
+    a_max_mps2: GroundProfileQpos
+    a_brake_mps2: GroundProfileQpos
+    v_switch_mps: GroundProfileQpos
+    k_speed_hz: NotRequired[GroundProfileQpos]
+
+
+# vehicle/ground_profile.schema.json#/properties/battery
+class GroundProfileBattery(TypedDict):
+    capacity_wh: NotRequired[GroundProfileQpos]
+    p_drive_w: NotRequired[GroundProfileQpos]
+    endurance_s: NotRequired[GroundProfileQpos]
+
+
+# vehicle/ground_profile.schema.json#/properties/drive
+class GroundProfileDrive(TypedDict):
+    type: Literal["ackermann", "corner_steer", "differential", "skid_steer"]
+    wheels: int
+    driven: Literal["front", "rear", "all"]
+    body: Literal["flu"]
+
+
+# vehicle/ground_profile.schema.json#/properties/fidelity
+class GroundProfileFidelity(TypedDict):
+    default: Literal["l0", "l2"]
+    supported: list[Literal["l0", "l2"]]
+
+
+# vehicle/ground_profile.schema.json#/properties/geometry
+class GroundProfileGeometry(TypedDict):
+    lf_m: GroundProfileQpos
+    lr_m: GroundProfileQpos
+    track_m: GroundProfileQpos
+    cg_height_m: GroundProfileQpos
+    wheel_radius_m: GroundProfileQpos
+    collision_radius_m: GroundProfileQpos
+    size_m: GroundProfileGeometrySizeM
+
+
+# vehicle/ground_profile.schema.json#/properties/geometry/properties/size_m
+class GroundProfileGeometrySizeM(TypedDict):
+    value: GroundProfileGeometrySizeMValue
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+
+
+# vehicle/ground_profile.schema.json#/properties/geometry/properties/size_m/properties/value
+class GroundProfileGeometrySizeMValue(TypedDict):
+    l: float  # noqa: E741
+    w: float
+    h: float
+
+
+# vehicle/ground_profile.schema.json#/$defs/q
+class GroundProfileQ(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/ground_profile.schema.json#/$defs/qpos
+class GroundProfileQpos(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/ground_profile.schema.json#/properties/resistance
+class GroundProfileResistance(TypedDict):
+    c_rr: NotRequired[GroundProfileQ]
+    cda_m2: NotRequired[GroundProfileQ]
+
+
+# vehicle/ground_profile.schema.json#/properties/sensors/additionalProperties
+class GroundProfileSensors(TypedDict):
+    file: str
+    default: NotRequired[bool]
+
+
+# vehicle/ground_profile.schema.json#/properties/tire
+class GroundProfileTire(TypedDict):
+    model: Literal["linear_st"]
+    mu: GroundProfileQpos
+    c_sf: GroundProfileQpos
+    c_sr: GroundProfileQpos
 
 
 # vehicle/imu.schema.json# IMU file sensors/imu.yaml (awr.sensor.imu.v1)

@@ -1,0 +1,49 @@
+# vehicles/ground/f1tenth/params.yaml —— profile f1tenth 1.0.0（awr.vehicle.ground.v1）
+# F1TENTH 级 1/10 阿克曼车。动力学参数逐项取 f1tenth_gym（gym/f110_gym/envs/f110_env.py）的缺省机体参数，即 CommonRoad 单轨模型
+# （ST）的参数口径：c_sf / c_sr 为单位法向载荷下的侧偏刚度系数（1/rad），mu 为路面摩擦系数，h 为质心高（载荷转移）。
+# 这辆车同时是地面域模型的对拍基准：awr.phys.l2.st_oracle 用同一组参数跑 CommonRoad ST 方程，与引擎逐用例比较。
+schema: awr.vehicle.ground.v1
+profile_version: 1.0.0
+id: f1tenth
+display_name: "F1TENTH-class 1/10 car"
+display_name_zh: "1/10 自动驾驶车（F1TENTH 级）"
+kind: ugv
+status: identified
+reference: "F1TENTH（f1tenth_gym 缺省参数）"
+drive: {type: ackermann, wheels: 4, driven: rear, body: flu}
+mass_kg: {value: 3.74, conf: A, src: "f1tenth_gym f110_env.py 缺省参数 m"}
+inertia_zz_kgm2: {value: 0.04712, conf: A, src: "f1tenth_gym 缺省参数 I"}
+geometry:
+  lf_m: {value: 0.15875, conf: A, src: "f1tenth_gym 缺省参数 lf"}
+  lr_m: {value: 0.17145, conf: A, src: "f1tenth_gym 缺省参数 lr（轴距 0.3302 m）"}
+  track_m: {value: 0.28, conf: D, src: "模拟参考值：车宽 0.31 m（f1tenth_gym width）减轮宽"}
+  cg_height_m: {value: 0.074, conf: A, src: "f1tenth_gym 缺省参数 h"}
+  wheel_radius_m: {value: 0.05, conf: D, src: "模拟参考值：1/10 车常见 100 mm 轮"}
+  collision_radius_m: {value: 0.33, conf: D, src: "派生：半对角线 √(0.58² + 0.31²)/2（f1tenth_gym length、width）"}
+  size_m: {value: {l: 0.58, w: 0.31, h: 0.20}, conf: A, src: "f1tenth_gym 缺省参数 length、width；高为模拟参考值"}
+tire:
+  model: linear_st
+  mu: {value: 1.0489, conf: A, src: "f1tenth_gym 缺省参数 mu"}
+  c_sf: {value: 4.718, conf: A, src: "f1tenth_gym 缺省参数 C_Sf"}
+  c_sr: {value: 5.4562, conf: A, src: "f1tenth_gym 缺省参数 C_Sr"}
+actuation:
+  steer_max_rad: {value: 0.4189, conf: A, src: "f1tenth_gym 缺省参数 s_max"}
+  steer_rate_max_rad_s: {value: 3.2, conf: A, src: "f1tenth_gym 缺省参数 sv_max"}
+  v_max_mps: {value: 20.0, conf: A, src: "f1tenth_gym 缺省参数 v_max"}
+  v_min_mps: {value: -5.0, conf: A, src: "f1tenth_gym 缺省参数 v_min"}
+  a_max_mps2: {value: 9.51, conf: A, src: "f1tenth_gym 缺省参数 a_max"}
+  a_brake_mps2: {value: 9.51, conf: D, src: "模拟参考值：取 a_max（f1tenth_gym 对加减速用同一上限）"}
+  v_switch_mps: {value: 7.319, conf: A, src: "f1tenth_gym 缺省参数 v_switch"}
+  k_speed_hz: {value: 3.0, conf: D, src: "模拟参考值：速度环增益"}
+resistance:
+  c_rr: {value: 0.0, conf: D, src: "CommonRoad ST 模型不含滚阻，与基准一致取 0"}
+  cda_m2: {value: 0.0, conf: D, src: "CommonRoad ST 模型不含气动阻力，与基准一致取 0"}
+battery:
+  capacity_wh: {value: 50.0, conf: D, src: "模拟参考值：3S 4500 mAh"}
+  p_drive_w: {value: 60.0, conf: D, src: "模拟参考值"}
+  endurance_s: {value: 2400.0, conf: D, src: "模拟参考值：约 40 min"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {wheelbase_m: 0.3302, lateral_acc_max_mps2: 10.29}
+notes:
+  - "对拍基准：awr.phys.l2.st_oracle（CommonRoad ST，RK4，|v| < 0.5 m/s 切换运动学单轨模型，同 f1tenth_gym）"

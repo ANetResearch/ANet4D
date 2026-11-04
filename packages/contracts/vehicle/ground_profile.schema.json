@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/vehicle/1/ground_profile.schema.json",
+  "title": "awr.vehicle.ground.v1 (ground vehicle profile)",
+  "description": "Ground vehicle package `vehicles/ground/<dir>/params.yaml`: the land counterpart of awr.vehicle.v1 with the same conventions (every physical value carries value / conf / src), read by the unified L2 engine's ground domain model (awr.phys.l2.ground) and by the device ladder (awr.sim.device). Dynamics follow the single-track (bicycle) model with linear tyres and load transfer as published by CommonRoad and used by f1tenth_gym: `tire.c_sf` / `c_sr` are cornering stiffness coefficients per unit normal load (1/rad), `tire.mu` the friction coefficient.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profile_version", "id", "display_name", "kind", "status", "drive", "mass_kg", "inertia_zz_kgm2", "geometry", "tire", "actuation", "fidelity", "model"],
+  "$defs": {
+    "q": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "number"},
+        "conf": {"enum": ["A", "B", "C", "D"]},
+        "src": {"type": "string", "minLength": 1},
+        "check": {"type": "string"}
+      },
+      "required": ["value", "conf", "src"]
+    },
+    "qpos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "number", "exclusiveMinimum": 0},
+        "conf": {"enum": ["A", "B", "C", "D"]},
+        "src": {"type": "string", "minLength": 1},
+        "check": {"type": "string"}
+      },
+      "required": ["value", "conf", "src"]
+    }
+  },
+  "properties": {
+    "schema": {"const": "awr.vehicle.ground.v1"},
+    "profile_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "id": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+    "display_name": {"type": "string", "minLength": 1},
+    "display_name_zh": {"type": "string"},
+    "kind": {"const": "ugv"},
+    "status": {"enum": ["regression", "placeholder", "identified"]},
+    "reference": {"type": "string", "description": "the public platform this package is modelled on"},
+    "drive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["ackermann", "corner_steer", "differential", "skid_steer"]},
+        "wheels": {"type": "integer", "minimum": 2, "maximum": 8},
+        "driven": {"enum": ["front", "rear", "all"]},
+        "body": {"const": "flu"}
+      },
+      "required": ["type", "wheels", "driven", "body"]
+    },
+    "mass_kg": {"$ref": "#/$defs/qpos", "unit": "kg"},
+    "inertia_zz_kgm2": {"$ref": "#/$defs/qpos", "unit": "kg*m^2"},
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lf_m": {"$ref": "#/$defs/qpos", "unit": "m", "description": "CG to front axle"},
+        "lr_m": {"$ref": "#/$defs/qpos", "unit": "m", "description": "CG to rear axle"},
+        "track_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "cg_height_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "wheel_radius_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "collision_radius_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "size_m": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "value": {"type": "object", "additionalProperties": false, "properties": {"l": {"type": "number", "exclusiveMinimum": 0}, "w": {"type": "number", "exclusiveMinimum": 0}, "h": {"type": "number", "exclusiveMinimum": 0}}, "required": ["l", "w", "h"]},
+            "conf": {"enum": ["A", "B", "C", "D"]},
+            "src": {"type": "string", "minLength": 1}
+          },
+          "required": ["value", "conf", "src"]
+        }
+      },
+      "required": ["lf_m", "lr_m", "track_m", "cg_height_m", "wheel_radius_m", "collision_radius_m", "size_m"]
+    },
+    "tire": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {"const": "linear_st"},
+        "mu": {"$ref": "#/$defs/qpos"},
+        "c_sf": {"$ref": "#/$defs/qpos", "description": "front cornering stiffness per unit normal load, 1/rad (CommonRoad C_Sf)"},
+        "c_sr": {"$ref": "#/$defs/qpos", "description": "rear cornering stiffness per unit normal load, 1/rad (CommonRoad C_Sr)"}
+      },
+      "required": ["model", "mu", "c_sf", "c_sr"]
+    },
+    "actuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "steer_max_rad": {"$ref": "#/$defs/qpos", "unit": "rad"},
+        "steer_rate_max_rad_s": {"$ref": "#/$defs/qpos", "unit": "rad/s"},
+        "v_max_mps": {"$ref": "#/$defs/qpos", "unit": "m/s"},
+        "v_min_mps": {"$ref": "#/$defs/q", "unit": "m/s", "description": "most negative (reverse) speed"},
+        "a_max_mps2": {"$ref": "#/$defs/qpos", "unit": "m/s^2"},
+        "a_brake_mps2": {"$ref": "#/$defs/qpos", "unit": "m/s^2"},
+        "v_switch_mps": {"$ref": "#/$defs/qpos", "unit": "m/s", "description": "above this speed the available acceleration falls as v_switch / v (power limit)"},
+        "k_speed_hz": {"$ref": "#/$defs/qpos", "unit": "Hz", "description": "speed loop proportional gain: acceleration per speed error (1/s)"}
+      },
+      "required": ["steer_max_rad", "steer_rate_max_rad_s", "v_max_mps", "v_min_mps", "a_max_mps2", "a_brake_mps2", "v_switch_mps"]
+    },
+    "resistance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "c_rr": {"$ref": "#/$defs/q", "description": "rolling resistance coefficient (deceleration c_rr*g)"},
+        "cda_m2": {"$ref": "#/$defs/q", "unit": "m^2"}
+      }
+    },
+    "battery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "capacity_wh": {"$ref": "#/$defs/qpos", "unit": "Wh"},
+        "p_drive_w": {"$ref": "#/$defs/qpos", "unit": "W", "description": "mean drive power at cruise"},
+        "endurance_s": {"$ref": "#/$defs/qpos", "unit": "s"}
+      }
+    },
+    "fidelity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {"enum": ["l0", "l2"]},
+        "supported": {"type": "array", "items": {"enum": ["l0", "l2"]}, "minItems": 1}
+      },
+      "required": ["default", "supported"]
+    },
+    "model": {"$ref": "../../world/1/common.schema.json#/$defs/relHref"},
+    "sensors": {"type": "object", "additionalProperties": {"type": "object", "properties": {"file": {"type": "string"}, "default": {"type": "boolean"}}, "required": ["file"]}},
+    "derived": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

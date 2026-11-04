@@ -8,10 +8,14 @@ cross-check where it has a model:
 
 - ``rigid``: the shared 6-DoF rigid body and quaternion helpers (ENU / FLU, semi-implicit Euler, deterministic);
 - ``multirotor``: per-rotor dynamics, PX4-gain cascade, allocation with desaturation, composite aerodynamics;
-- ``tier``: ``L2Tier``, the PhysicsTier (same commands, reference generator, contact rules and PoseHistory as Fast and gz).
+- ``ugv``: single-track vehicle dynamics (CommonRoad / f1tenth_gym parameter set) with linear tyres, load transfer, steering
+  and drive limits, resistances, terrain following; ``ground``: the ground vehicle packages (``vehicles/ground``);
+  ``st_oracle``: the published ST equations with RK4 as the baseline the ugv model is compared against;
+- ``tier``: ``L2Tier``, the PhysicsTier (same commands, reference generators, contact rules and PoseHistory as Fast and gz),
+  one step loop for every domain.
 
-Ground vehicles, surface vessels and fixed wings are the next domain models on the same body and the same tier; until a
-domain model exists the tier rejects that vehicle with 630 instead of pretending.
+Surface vessels and fixed wings are the next domain models on the same body and the same tier; until a domain model
+exists the tier rejects that vehicle with 630 instead of pretending.
 """
 
 from __future__ import annotations

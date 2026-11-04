@@ -20,8 +20,9 @@ tier              meaning
 and for gimbals the servo tiers ``l1`` (rate-limited) and ``l2`` (second-order servo), see ``awr.sim.sensors.servo``.
 
 ``ladder()`` is what the device page shows; a tier is *available* only when the profile declares it and the code
-implements it (for ``l2``: when the unified engine has a domain model for the device's family). Land and sea devices are
-listed as planned rows until their profiles and domain models land.
+implements it (for ``l2``: when the unified engine has a domain model for the device's family). Ground vehicles come from
+their own packages (``vehicles/ground``, ``awr.vehicle.ground.v1``, read through ``awr.phys.l2.ground``); sea devices are
+listed as planned rows until their profiles and domain model land.
 """
 
 from __future__ import annotations
@@ -54,30 +55,6 @@ L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2
               "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}
 
 PLANNED = [
-    {
-        "id": "ugv_rover",
-        "domain": "land",
-        "display_name_zh": "轮式地面车（JPL 开源漫游车级）",
-        "category": "ugv",
-        "size_class": "small",
-        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型（自行车 + 轮胎力）；参考 JPL Open Source Rover",
-    },
-    {
-        "id": "ugv_f1tenth",
-        "domain": "land",
-        "display_name_zh": "1/10 自动驾驶车（F1TENTH 级）",
-        "category": "ugv",
-        "size_class": "small",
-        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型；参考 F1TENTH",
-    },
-    {
-        "id": "ugv_podcar",
-        "domain": "land",
-        "display_name_zh": "小型乘用车（OpenPodcar 级）",
-        "category": "ugv",
-        "size_class": "medium",
-        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型；参考 OpenPodcar 2",
-    },
     {
         "id": "usv_small",
         "domain": "sea",
@@ -112,6 +89,23 @@ def _domain(category, frame_type) -> str:
     if frame_type and str(frame_type).startswith("vtol"):
         return "vtol"
     return str(category or "unknown")
+
+
+def _ground_tier(tier: str, impl: dict, declared: bool) -> dict:
+    """Tier row of a ground vehicle: l0 by declaration, l2 by the unified engine's ugv domain model; the multirotor cascade
+    (l1) and the fixed-wing fast tier (fw) do not apply to a car."""
+    i = impl[tier]["implemented"]
+    if tier == "l2":
+        have = bool(impl["l2"]["domains"].get("ugv")) and i
+        return {"declared": have, "implemented": i, "domain": "ugv", "engine": "unified" if have else None, "gz_model": None,
+                "status": "可用（统一引擎）" if have else "无（统一引擎尚无 ugv 模型）"}
+    if tier == "l1":
+        return {"declared": False, "implemented": i, "status": "不适用（PX4-lite 多旋翼级联）"}
+    if tier == "fw":
+        return {"declared": False, "implemented": i, "status": "不适用（固定翼快速档）"}
+    if tier == "l3":
+        return {"declared": False, "implemented": False, "status": "无"}
+    return {"declared": declared, "implemented": i, "status": "可用" if declared and i else ("已声明未实现" if declared else ("代码有、机型未声明" if i else "无"))}
 
 
 def _planned_tier(tier: str, impl: dict, category: str) -> dict:
@@ -245,6 +239,7 @@ def ladder(vdir: Path | None = None) -> dict:
                 "source": str(path.relative_to(vdir)),
             }
         )
+    devices.extend(_ground_devices(vdir, impl))
     devices.extend(
         {
             **p,
@@ -263,6 +258,48 @@ def ladder(vdir: Path | None = None) -> dict:
         "gimbal_tiers": GIMBAL_TIERS,
         "devices": devices,
     }
+
+
+def _ground_devices(vdir: Path, impl: dict) -> list[dict]:
+    """Rows for the ground vehicle packages (``vehicles/ground``), in catalog order."""
+    from awr.phys.l2.ground import load_ground_docs, read_ground_catalog
+
+    gdir = vdir / "ground"
+    cat = read_ground_catalog(gdir) if gdir.is_dir() else None
+    if cat is None:
+        return []
+    by_id = {m["id"]: m for m in cat["models"] if isinstance(m, dict)}
+    out = []
+    for pid, (doc, path) in load_ground_docs(gdir).items():
+        cm = by_id.get(pid, {})
+        fid = doc.get("fidelity") or {}
+        declared = set(fid.get("supported", []))
+        g, a, batt = doc.get("geometry") or {}, doc.get("actuation") or {}, doc.get("battery") or {}
+        out.append(
+            {
+                "id": pid,
+                "domain": "land",
+                "display_name": doc.get("display_name"),
+                "display_name_zh": cm.get("display_name_zh", doc.get("display_name_zh", doc.get("display_name"))),
+                "category": "ugv",
+                "size_class": cm.get("size_class"),
+                "frame": (doc.get("drive") or {}).get("type"),
+                "mass_kg": _val(doc.get("mass_kg")),
+                "wheelbase_m": (_val(g.get("lf_m")) or 0.0) + (_val(g.get("lr_m")) or 0.0),
+                "v_max_mps": _val(a.get("v_max_mps")),
+                "endurance_s": _val(batt.get("endurance_s")),
+                "capacity_wh": _val(batt.get("capacity_wh")),
+                "reference": doc.get("reference"),
+                "status": doc.get("status"),
+                "fidelity_declared": sorted(declared),
+                "fidelity_default": fid.get("default"),
+                "tiers": {t: _ground_tier(t, impl, t in declared) for t in TIERS},
+                "sensors": {},
+                "summary_zh": cm.get("summary_zh", ""),
+                "source": str(path.relative_to(vdir)) if path.is_relative_to(vdir) else str(path),
+            }
+        )
+    return out
 
 
 def servo_responses(dt: float = 0.02, n: int = 150) -> dict:
