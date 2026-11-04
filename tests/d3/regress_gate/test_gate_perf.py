@@ -135,6 +135,10 @@ def test_perf_worker_records_cpu_time_and_properties(tmp_path: Path) -> None:
 def test_step_perf_records_and_compares(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """经子进程完整执行 perf 步骤：记录基线到临时 baseline.json，再与之比较（放宽阈值只验证管线，不判性能）。"""
     pytest.importorskip("numpy")
+    # make 把 pytest 包在全局性能锁（flock -s $AWR_PERF_LOCK）里运行；这里验证的是管线，不是锁，否则 step_perf 的
+    # LOCK_EX 等自己的父进程放锁，永远等不到（托管 CI shard 2 曾因此卡到 45 min 超时）
+    monkeypatch.delenv("AWR_PERF_LOCK", raising=False)
+    monkeypatch.delenv("AWR_PERF_LOCK_HELD", raising=False)
     base = tmp_path / "baseline.json"
     base.write_text(json.dumps({"schema": "awr.d3.regress_gate.baseline.v1", "digests": {"k": "v"}}) + "\n", encoding="utf-8")
     monkeypatch.setattr(G, "BASELINE", base)

@@ -841,7 +841,9 @@ def step_perf(g: dict, out: Path, record: bool) -> dict:
     d = out / "perf"
     d.mkdir(parents=True, exist_ok=True)
     lock = None
-    if os.environ.get("AWR_PERF_LOCK"):          # ADR-033 PR-1 / ADR-195 (3)：dmax 上为 $D/.perf.lock（flock -x）
+    # ADR-033 PR-1 / ADR-195 (3)：dmax 上为 $D/.perf.lock（flock -x）；调用方已持锁（make 的 AWR_PERF_LOCK_HELD，
+    # mk/common.mk）时不再加排它锁——对父进程的共享锁加 LOCK_EX 会永远等下去
+    if os.environ.get("AWR_PERF_LOCK") and not os.environ.get("AWR_PERF_LOCK_HELD"):
         lock = open(os.environ["AWR_PERF_LOCK"], "a+")  # noqa: SIM115 - 持有到本步骤结束
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
     try:

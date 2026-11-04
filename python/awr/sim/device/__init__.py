@@ -27,6 +27,7 @@ listed as planned rows until their profiles and domain model land.
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import math
@@ -54,6 +55,7 @@ GZ_MODELS = {"x500": "x500_d4d", "x500_sih": "x500_d4d"}
 L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2.fixedwing", "vtol": "awr.phys.l2.fixedwing",
               "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}
 
+L2_PACKAGES = "awr.phys.l2.ground"                 # ground package loader of the engine (D3), imported by name
 PLANNED = [
     {
         "id": "usv_small",
@@ -261,16 +263,16 @@ def ladder(vdir: Path | None = None) -> dict:
 
 
 def _ground_devices(vdir: Path, impl: dict) -> list[dict]:
-    """Rows for the ground vehicle packages (``vehicles/ground``), in catalog order."""
-    from awr.phys.l2.ground import load_ground_docs, read_ground_catalog
-
+    """Rows for the ground vehicle packages (``vehicles/ground``), in catalog order. The package loader lives in the D3
+    engine package, so it is loaded by name (AWR-05 §4.8: D2 code does not import D3 packages)."""
+    pk = importlib.import_module(L2_PACKAGES)
     gdir = vdir / "ground"
-    cat = read_ground_catalog(gdir) if gdir.is_dir() else None
+    cat = pk.read_ground_catalog(gdir) if gdir.is_dir() else None
     if cat is None:
         return []
     by_id = {m["id"]: m for m in cat["models"] if isinstance(m, dict)}
     out = []
-    for pid, (doc, path) in load_ground_docs(gdir).items():
+    for pid, (doc, path) in pk.load_ground_docs(gdir).items():
         cm = by_id.get(pid, {})
         fid = doc.get("fidelity") or {}
         declared = set(fid.get("supported", []))
