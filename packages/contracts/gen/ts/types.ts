@@ -570,6 +570,17 @@ export type WorldCommonSha256 = string
  */
 export type WorldCommonRelHref = string
 /**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "EntityClassesV1Spread".
+ */
+export type EntityClassesV1Spread =
+  | number
+  | {
+      base: number
+      step?: number
+      cycle?: number
+    }
+/**
  * Environment asset binding style (AWR-16 §1.4 rule 7).
  *
  * This interface was referenced by `AwrContracts`'s JSON-Schema
@@ -971,6 +982,20 @@ export type PredicateNode1 =
         }
       }
     }
+/**
+ * SHA-256 over the sorted 'layer:file:sha256' lines of every bound file.
+ */
+export type PrincipleV1Sha256 = string
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "PrincipleV1Source".
+ */
+export type PrincipleV1Source = 'measured' | 'derived' | 'assigned' | 'manual'
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "PrincipleV1Sha256".
+ */
+export type PrincipleV1Sha2561 = string
 /**
  * awr.sensor.radar_mmw.v1 (77 GHz FMCW radar). Model file vehicles/sensor_models/<id>.yaml or mount file vehicles/<dir>/sensors/<file>.yaml (AWR-20 §7.5): a model file carries model_id and model_version; a mount file carries sensor_id, spec_ref and mount plus whitelisted overrides; the effective spec is deep_merge(model, mount). SNR = 13.2 + 10 lg(sigma) - 40 lg(R / R_ref) - 2 gamma_rain R / 1000 (AWR-04 §6.2).
  *
@@ -4432,6 +4457,42 @@ export interface Engine {
   params?: {}
   license: string
   [k: string]: unknown
+}
+/**
+ * Entity class catalog (awr.life.entity_classes.v1). Classes of targets the target behavior engine admits and moves: tape class and navigation profile, body (articulated walker, rigid vehicle, static object) and its assets, height and speed spreads over the member index, the role for the activity director and the purposes the class may take. The same objects appear inline in a recipe under `classes`.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "EntityClassesV1".
+ */
+export interface EntityClassesV1 {
+  schema: 'awr.life.entity_classes.v1'
+  note?: string
+  classes: {
+    [k: string]: EntityClassesV1Class
+  }
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "EntityClassesV1Class".
+ */
+export interface EntityClassesV1Class {
+  label_zh?: string
+  tape_class: 'person' | 'vehicle' | 'dog' | 'machine' | 'object' | 'uav'
+  profile: 'person' | 'vehicle' | null
+  body: {
+    kind: 'articulated' | 'rigid' | 'static'
+    assets: ('humans' | 'vehicles' | 'street') | [string, ...string[]]
+    height_m?: EntityClassesV1Spread
+  }
+  motion?: {
+    max_speed_mps?: EntityClassesV1Spread
+  }
+  role?: string
+  activities?: string[]
+  min_activity_kinds?: number
+  id_prefix?: string
+  semantic_type?: string
+  description?: string
 }
 /**
  * enums.json meta-schema. Enum name -> list (value = index; null = reserved) or object (explicit values) or object of lists (FlightSub, JobState).
@@ -10692,6 +10753,104 @@ export interface Presets {
   }
 }
 /**
+ * Scene principle manifest (awr.life.principle.v1). principle.json of a scene principle package: the only scene input of the target behavior engine (awr.life). It binds by relative path and SHA-256 every layer the engine reads (support grids, town semantics, lane network, outdoor places, the world reference cited by tape headers), states for each layer how it was produced and whether a person verified it, and declares which activities the scene can carry. The scene representation itself (mesh, point cloud, Gaussians) is not part of the package.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "PrincipleV1".
+ */
+export interface PrincipleV1 {
+  schema: 'awr.life.principle.v1'
+  /**
+   * Scene id; equals world.json id of the world reference layer.
+   */
+  id: string
+  name?: string
+  name_zh?: string
+  content_version: PrincipleV1Sha256
+  frame: {
+    units: 'm'
+    axes: 'ENU'
+    z_up: true
+    /**
+     * [x0, y0, x1, y1] in metres.
+     *
+     * @minItems 4
+     * @maxItems 4
+     */
+    bounds: [number, number, number, number, ...number[]]
+    georeferenced?: boolean
+    origin?: {
+      lat?: number
+      lon?: number
+      alt_m?: number
+      crs?: string
+    }
+  }
+  layers: {
+    support: PrincipleV1Layer & {
+      schema: 'awr.life.support.v1'
+      files: {
+        [k: string]: PrincipleV1Sha2561
+      }
+    }
+    semantics: PrincipleV1Layer & {
+      schema: 'awr.life.town_semantics.v1'
+      sha256: PrincipleV1Sha2561
+    }
+    lane_network?: PrincipleV1Layer & {
+      format: 'sumo-net'
+      sha256: PrincipleV1Sha2561
+    }
+    outdoor_places?: PrincipleV1Layer & {
+      schema: 'awr.life.outdoor_places.v1'
+      sha256: PrincipleV1Sha2561
+    }
+    /**
+     * World reference the tape header cites: world.json, geometry/nav/*.json witnesses, geometry/mesh/raycast. No mesh.
+     */
+    world: {
+      href: string
+      content_version: string
+      raycast_sha256: PrincipleV1Sha2561
+    }
+  }
+  capabilities: {
+    walking: PrincipleV1Capability
+    vehicles_parked?: PrincipleV1Capability
+    driving: PrincipleV1Capability
+    indoor?: PrincipleV1Capability
+    public_transport?: PrincipleV1Capability
+    cycling?: PrincipleV1Capability
+    water?: PrincipleV1Capability
+    [k: string]: PrincipleV1Capability | undefined
+  }
+  provenance: {
+    producer: string
+    inputs?: {}
+    notes?: string
+  }
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "PrincipleV1Layer".
+ */
+export interface PrincipleV1Layer {
+  href: string
+  source: PrincipleV1Source
+  verified: boolean
+  method?: string
+  note?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "PrincipleV1Capability".
+ */
+export interface PrincipleV1Capability {
+  status: 'supported' | 'unsupported' | 'unknown' | 'absent'
+  reason?: string
+  evidence?: string
+}
+/**
  * REST error response (application/problem+json). AWR-17 §4.4: every REST error carries code from rt/reasons.json; HTTP status follows the reason table. The OpenAPI snapshot rest/openapi.snapshot.json is produced from the M11 app.
  *
  * This interface was referenced by `AwrContracts`'s JSON-Schema
@@ -13134,7 +13293,7 @@ export interface TapeManifestV1 {
   bytes: number
   n_actors: number
   n_ticks: number
-  header: TapeV1
+  header: TapeV1 | TapeV2
   provenance: {
     generator: string
     generator_version: string
@@ -13301,6 +13460,203 @@ export interface TapeV1 {
          */
         body_rgb?: [number, number, number, ...number[]]
         height_mm?: number
+      }
+    }[]
+  ]
+  /**
+   * Checked against the loaded world package (615 on mismatch)
+   */
+  world: {
+    id: string
+    content_version: string
+    raycast_sha256: string
+    navmesh_sha256: {
+      person: string
+      vehicle?: string
+    }
+    navgraph_sha256?: string
+    anchors_sha256: string
+  }
+  /**
+   * Normalised keyframes (display and audit)
+   */
+  environment: {}
+  /**
+   * Compiled M07 operation sequence; the only authority for the environment
+   */
+  env_track: {
+    t_ms: number
+    /**
+     * M07 operation {kind, patch?, d2?, mode, duration_s} (M23 §6.11)
+     */
+    op: {}
+  }[]
+  /**
+   * Normalised comms zones (times in ms)
+   */
+  comms: {}
+  /**
+   * P1 animation sidecar tape.anim
+   */
+  anim: null | {
+    sha256: string
+    codec: 'anim-u16@1'
+  }
+  /**
+   * Interactive realised tape
+   */
+  realized: null | {
+    base_content_sha256: string
+    run_id: string
+    attempt: number
+    inputlog_sha256: string
+  }
+}
+/**
+ * Canonical event tape header (drone4d.tape.v2). AWR-05 §8.1, M23 §6.7 (contracts 1.3.0, d1 V0.3). The header is stored as JCS bytes in tape.bin and hashed as stored (content_sha256 = SHA-256(header_bytes || F), F = canonical frames in tick-major order). Records are 29 B little-endian per actor per tick; container 4294967295 = none. Provenance is never part of the header (tape_manifest.v1).
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "TapeV2".
+ */
+export interface TapeV2 {
+  schema: 'drone4d.tape.v2'
+  event_id: string
+  event_version: number
+  /**
+   * JCS hash of the tape input subset (M23 §6.7.5)
+   */
+  event_sha256: string
+  mode: 'exogenous' | 'interactive'
+  seed: number
+  tick_hz: 10
+  n_ticks: number
+  /**
+   * n_ticks = duration_ms / 100
+   */
+  duration_ms: number
+  record: {
+    bytes: 29
+    endian: 'le'
+    fields: [
+      ['x_mm', 'i32'],
+      ['y_mm', 'i32'],
+      ['z_mm', 'i32'],
+      ['yaw_cdeg', 'i16'],
+      ['vx_cmps', 'i16'],
+      ['vy_cmps', 'i16'],
+      ['vz_cmps', 'i16'],
+      ['state', 'u8'],
+      ['container', 'u32'],
+      ['pitch_cdeg', 'i16'],
+      ['roll_cdeg', 'i16']
+    ]
+    states: {'0': 'absent'; '1': 'moving'; '2': 'waiting'; '3': 'in_vehicle'; '4': 'inside'; '5': 'gone'}
+    frame: 'world-enu'
+  }
+  /**
+   * Descriptive; does not affect canonical frames
+   */
+  codec: {
+    name: 'col-delta-zstd@1'
+    block_ticks: 100
+  }
+  /**
+   * Scripted actors first (idx <= 29)
+   *
+   * @minItems 1
+   * @maxItems 1030
+   */
+  actors: [
+    {
+      idx: number
+      id: string
+      class: 'person' | 'vehicle' | 'dog' | 'machine' | 'object' | 'uav'
+      scripted: boolean
+      /**
+       * NavMesh profile (person, vehicle) or null for static and 3D classes
+       */
+      profile: string | null
+      /**
+       * @minItems 3
+       * @maxItems 3
+       */
+      size_mm: [number, number, number, ...number[]]
+      appearance: {
+        asset: string
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        tint_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        top_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        bottom_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        body_rgb?: [number, number, number, ...number[]]
+        height_mm?: number
+        asset_sha256?: string
+        age?: 'adult'
+        top_name?: string
+        bottom_name?: string
+        colour_name?: string
+        plate_text?: string
+        plate_synthetic?: true
+      }
+    },
+    ...{
+      idx: number
+      id: string
+      class: 'person' | 'vehicle' | 'dog' | 'machine' | 'object' | 'uav'
+      scripted: boolean
+      /**
+       * NavMesh profile (person, vehicle) or null for static and 3D classes
+       */
+      profile: string | null
+      /**
+       * @minItems 3
+       * @maxItems 3
+       */
+      size_mm: [number, number, number, ...number[]]
+      appearance: {
+        asset: string
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        tint_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        top_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        bottom_rgb?: [number, number, number, ...number[]]
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        body_rgb?: [number, number, number, ...number[]]
+        height_mm?: number
+        asset_sha256?: string
+        age?: 'adult'
+        top_name?: string
+        bottom_name?: string
+        colour_name?: string
+        plate_text?: string
+        plate_synthetic?: true
       }
     }[]
   ]
