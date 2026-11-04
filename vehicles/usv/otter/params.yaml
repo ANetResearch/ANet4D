@@ -1,0 +1,61 @@
+# vehicles/usv/otter/params.yaml —— profile otter 1.0.0（awr.vehicle.usv.v1）
+# Maritime Robotics Otter 级双体无人艇。参数逐项取 Fossen MSS 的 python_vehicle_simulator（vehicles/otter.py，含 25 kg 载荷）：
+# 质量 55 + 25 kg、质心、惯量半径、附加质量比例（X_udot = −0.1 m、Y_vdot = −1.5 m、N_rdot = −1.7 I_z）、由最高速与时间常数定的线性阻尼
+# （X_u = −24.4 g / U_max、Y_v = −M_22 / T_sway、N_r = −M_66 / T_yaw）、偏航二次阻尼 −10 N_r |r| r、横流阻力积分（Hoerner Cd）、
+# 双推进器 k_pos / k_neg / n_max / n_min / T_n。B 级值为按这些公式推出的数字。这艘艇同时是海面域模型的对拍基准（awr.phys.l2.fossen_oracle）。
+schema: awr.vehicle.usv.v1
+profile_version: 1.0.0
+id: otter
+display_name: "Otter-class twin-hull USV"
+display_name_zh: "双体无人艇（Maritime Robotics Otter 级）"
+kind: usv
+status: identified
+reference: "Fossen MSS python_vehicle_simulator otter.py（Maritime Robotics Otter）"
+propulsion: {type: twin_fixed, hull: catamaran, body: flu}
+mass_kg: {value: 80.0, conf: A, src: "otter.py：m 55.0 + mp 25.0"}
+inertia_zz_kgm2: {value: 16.0, conf: B, src: "派生：Ig_CG,zz = 55·(0.25 L)² = 13.75，加平行轴项 55·0.2² + 25·0.05²，绕船体原点"}
+geometry:
+  length_m: {value: 2.0, conf: A, src: "otter.py：L"}
+  beam_m: {value: 1.08, conf: A, src: "otter.py：B"}
+  draft_m: {value: 0.195, conf: B, src: "派生：T = ∇ / (2 Cb B_pont L)，∇ = 80 / 1025"}
+  hull_beam_m: {value: 0.25, conf: A, src: "otter.py：B_pont"}
+  x_g_m: {value: 0.153, conf: B, src: "派生：(55·0.2 + 25·0.05) / 80"}
+  cg_above_water_m: {value: 0.2, conf: B, src: "otter.py：rg_z = −0.2（NED）"}
+  collision_radius_m: {value: 1.14, conf: D, src: "派生：半对角线 √(2.0² + 1.08²)/2"}
+  size_m: {value: {l: 2.0, w: 1.08, h: 1.0}, conf: A, src: "otter.py：L、B；高为模拟参考值"}
+hydro:
+  model: fossen_3dof
+  a_u_kg: {value: 5.5, conf: A, src: "otter.py：Xudot = −0.1 m（m 55）"}
+  a_v_kg: {value: 82.5, conf: A, src: "otter.py：Yvdot = −1.5 m"}
+  a_r_kgm2: {value: 27.2, conf: B, src: "otter.py：Nrdot = −1.7 Ig_zz，Ig_zz 16.0"}
+  d_u: {value: 77.5, conf: B, src: "otter.py：Xu = −24.4 g / Umax，Umax = 6 kn = 3.086 m/s"}
+  d_v: {value: 162.5, conf: B, src: "otter.py：Yv = −M_22 / T_sway，M_22 = 80 + 82.5，T_sway 1.0 s"}
+  d_r: {value: 43.2, conf: B, src: "otter.py：Nr = −M_66 / T_yaw，M_66 = 16.0 + 27.2，T_yaw 1.0 s"}
+  d_uu: {value: 0.0, conf: A, src: "otter.py：纵向只有线性阻尼"}
+  d_vv: {value: 0.0, conf: A, src: "otter.py：横向二次项由横流阻力积分给出"}
+  d_rr: {value: 432.0, conf: B, src: "otter.py：tau_damp[5] −= 10·D_66·|r|·r，D_66 = 43.2"}
+  cd_crossflow: {value: 1.12, conf: B, src: "MSS lib.gnc.Hoerner(B_pont 0.25, T 0.195)：B/2T = 0.64 处表插值"}
+  rho_water_kgm3: {value: 1026.0, conf: A, src: "MSS lib.gnc.crossFlowDrag：rho 1026"}
+  cda_wind_m2: {value: 0.5, conf: D, src: "模拟参考值：水面以上迎风面积"}
+thrusters:
+  x_m: {value: 0.0, conf: D, src: "otter.py 的力矩只用横向臂长，纵向位置取 0"}
+  y_m: {value: 0.395, conf: A, src: "otter.py：y_pont"}
+  k_pos: {value: 0.01108, conf: A, src: "otter.py：k_pos = 0.02216 / 2"}
+  k_neg: {value: 0.006445, conf: A, src: "otter.py：k_neg = 0.01289 / 2"}
+  n_max_rad_s: {value: 103.9, conf: B, src: "otter.py：√(0.5·24.4·g / k_pos)"}
+  n_min_rad_s: {value: -101.7, conf: B, src: "otter.py：−√(0.5·13.6·g / k_neg)"}
+  tau_s: {value: 0.1, conf: A, src: "otter.py：T_n"}
+  v_max_mps: {value: 3.086, conf: A, src: "otter.py：Umax = 6 kn"}
+  a_max_mps2: {value: 1.0, conf: D, src: "模拟参考值：速度参考斜坡（满推 239 N / 85.5 kg = 2.8 m/s²）"}
+  r_max_rad_s: {value: 0.6, conf: D, src: "模拟参考值：偏航角速度参考上限"}
+  k_speed_hz: {value: 1.0, conf: D, src: "模拟参考值：速度环增益"}
+  k_yaw_hz: {value: 2.0, conf: D, src: "模拟参考值：偏航角速度环增益"}
+battery:
+  capacity_wh: {value: 1800.0, conf: D, src: "模拟参考值"}
+  p_cruise_w: {value: 150.0, conf: D, src: "模拟参考值"}
+  endurance_s: {value: 43200.0, conf: D, src: "模拟参考值：约 12 h"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {m_surge_kg: 85.5, m_sway_kg: 162.5, i_yaw_kgm2: 43.2, thrust_max_n: 239.3}
+notes:
+  - "对拍基准：awr.phys.l2.fossen_oracle（Fossen 三自由度 + 横流阻力 + 推进器一阶滞后，RK4）"

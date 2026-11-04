@@ -1,0 +1,57 @@
+# vehicles/usv/blueboat/params.yaml —— profile blueboat 1.0.0（awr.vehicle.usv.v1）
+# Blue Robotics BlueBoat 级小型双体艇：尺寸、干重、电池、最高速取产品规格页（A 级）；水动力与推进器系数为 D 级模拟参考值
+# （按 Otter 的比例关系与最高速 3 m/s 的推力 / 阻力平衡定）。
+schema: awr.vehicle.usv.v1
+profile_version: 1.0.0
+id: blueboat
+display_name: "BlueBoat-class small USV"
+display_name_zh: "小型双体无人艇（BlueBoat 级）"
+kind: usv
+status: placeholder
+reference: "Blue Robotics BlueBoat（产品规格页）"
+propulsion: {type: twin_fixed, hull: catamaran, body: flu}
+mass_kg: {value: 16.9, conf: A, src: "规格页：干重 14.5 kg + 2 块电池 2.4 kg"}
+inertia_zz_kgm2: {value: 3.25, conf: D, src: "派生：m·(l² + w²)/12，l 1.20、w 0.93"}
+geometry:
+  length_m: {value: 1.2, conf: A, src: "规格页：长 120 cm"}
+  beam_m: {value: 0.93, conf: A, src: "规格页：展开宽 93 cm"}
+  draft_m: {value: 0.1, conf: D, src: "模拟参考值：2 块电池无载荷（规格页：满载吃水 0.32 m、干舷 0.16 m）"}
+  hull_beam_m: {value: 0.2, conf: D, src: "模拟参考值：单侧浮体宽"}
+  x_g_m: {value: 0.0, conf: D, src: "模拟参考值"}
+  cg_above_water_m: {value: 0.12, conf: D, src: "模拟参考值"}
+  collision_radius_m: {value: 0.76, conf: D, src: "派生：半对角线 √(1.2² + 0.93²)/2"}
+  size_m: {value: {l: 1.2, w: 0.93, h: 0.46}, conf: A, src: "规格页：展开 120 × 93 × 46 cm"}
+hydro:
+  model: fossen_3dof
+  a_u_kg: {value: 1.7, conf: D, src: "模拟参考值：0.1 m（同 Otter 比例）"}
+  a_v_kg: {value: 25.0, conf: D, src: "模拟参考值：1.5 m（同 Otter 比例）"}
+  a_r_kgm2: {value: 5.5, conf: D, src: "模拟参考值：1.7 I_z（同 Otter 比例）"}
+  d_u: {value: 8.7, conf: D, src: "模拟参考值：与 d_uu 一起在 3 m/s 平衡 2 × 40 N"}
+  d_v: {value: 42.0, conf: D, src: "模拟参考值：M_22 / 1 s"}
+  d_r: {value: 8.75, conf: D, src: "模拟参考值：M_66 / 1 s"}
+  d_uu: {value: 6.0, conf: D, src: "模拟参考值"}
+  d_vv: {value: 0.0, conf: D, src: "横向二次项由横流阻力积分给出"}
+  d_rr: {value: 87.5, conf: D, src: "模拟参考值：10 d_r（同 Otter）"}
+  cd_crossflow: {value: 0.96, conf: B, src: "Hoerner 表：B/2T = 1.0 处插值"}
+  rho_water_kgm3: {value: 1026.0, conf: A, src: "MSS lib.gnc.crossFlowDrag：rho 1026"}
+  cda_wind_m2: {value: 0.15, conf: D, src: "模拟参考值"}
+thrusters:
+  x_m: {value: -0.5, conf: D, src: "模拟参考值：艉部"}
+  y_m: {value: 0.3, conf: D, src: "模拟参考值：浮体中心线间距 0.6 m"}
+  k_pos: {value: 0.004, conf: D, src: "模拟参考值：n_max 100 rad/s 时 40 N"}
+  k_neg: {value: 0.003, conf: D, src: "模拟参考值：n_min 100 rad/s 时 30 N"}
+  n_max_rad_s: {value: 100.0, conf: D, src: "模拟参考值"}
+  n_min_rad_s: {value: -100.0, conf: D, src: "模拟参考值"}
+  tau_s: {value: 0.1, conf: D, src: "模拟参考值"}
+  v_max_mps: {value: 3.0, conf: A, src: "规格页：最高 3 m/s（2 块电池、无载荷）"}
+  a_max_mps2: {value: 1.0, conf: D, src: "模拟参考值"}
+  r_max_rad_s: {value: 0.8, conf: D, src: "模拟参考值"}
+  k_speed_hz: {value: 1.0, conf: D, src: "模拟参考值"}
+  k_yaw_hz: {value: 2.0, conf: D, src: "模拟参考值"}
+battery:
+  capacity_wh: {value: 532.0, conf: A, src: "规格页：2 块 14.8 V 18 Ah"}
+  p_cruise_w: {value: 30.0, conf: A, src: "规格页：1 m/s 约 30 W"}
+  endurance_s: {value: 64800.0, conf: A, src: "规格页：1 m/s 18 h（2 块电池）"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {m_surge_kg: 18.6, m_sway_kg: 41.9, i_yaw_kgm2: 8.75, thrust_max_n: 80.0}

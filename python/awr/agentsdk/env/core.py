@@ -63,7 +63,7 @@ log = logging.getLogger(__name__)
 TICK_MS = 100
 TICK_NS = TICK_MS * 1_000_000
 _MODE = {VehicleStatus.GROUNDED: "landed", VehicleStatus.LANDING: "landing", VehicleStatus.AIRBORNE: "airborne",
-         VehicleStatus.CRASHED: "failsafe", VehicleStatus.LOST: "failsafe", VehicleStatus.MOVING: "driving"}
+         VehicleStatus.CRASHED: "failsafe", VehicleStatus.LOST: "failsafe", VehicleStatus.MOVING: "driving", VehicleStatus.AFLOAT: "afloat"}
 _NAV_CMD = {"velocity": "velocity", "goto": "goto", "hover": "hover", "takeoff": "takeoff", "land": "land", "kill": "hover"}
 
 
@@ -493,7 +493,7 @@ class BenchEnv:
             reached = a.goto_nav is not None and float(np.linalg.norm(np.asarray(nav["pos_enu_m"]) - a.goto_nav)) < 1.0
             obs = {"schema": "drone4d.bench.obs.v1", "k": self.k, "t_ns": t, "nav": nav,
                    "status": {"mode": _MODE[st], "nav_cmd": _NAV_CMD.get(self.tier.tracker.kind(u), "hover"), "goto_reached": bool(reached),
-                              "contact": st in (VehicleStatus.GROUNDED, VehicleStatus.CRASHED, VehicleStatus.MOVING),
+                              "contact": st in (VehicleStatus.GROUNDED, VehicleStatus.CRASHED, VehicleStatus.MOVING, VehicleStatus.AFLOAT),
                               "safety": "low_battery" if nav["battery_soc"] < 0.2 else "normal", "locked_sensors": []},
                    "ground_hint": {"dsm_m": float(self.world.height_dsm(xy)[0]), "dtm_m": float(self.world.ground_dtm(xy)[0])},
                    "sensors": a.frames if self.l2 is not None else {"detections": a.dets}, "acks": a.acks, "comm": self.link.status(u), "dropped": {},

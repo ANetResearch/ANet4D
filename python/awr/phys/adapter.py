@@ -35,7 +35,8 @@ class VehicleStatus(StrEnum):
     GROUNDED = "GROUNDED"
     LANDING = "LANDING"
     AIRBORNE = "AIRBORNE"
-    MOVING = "MOVING"                              # ground vehicles under way (GROUNDED = at rest); air vehicles never report it
+    MOVING = "MOVING"                              # ground vehicles and vessels under way (GROUNDED / AFLOAT = at rest); air vehicles never report it
+    AFLOAT = "AFLOAT"                              # surface vessels at rest on the water
 
 
 @dataclass(frozen=True)

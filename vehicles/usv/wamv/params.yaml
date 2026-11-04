@@ -1,0 +1,58 @@
+# vehicles/usv/wamv/params.yaml —— profile wamv 1.0.0（awr.vehicle.usv.v1）
+# WAM-V 16 级中型双体艇（RobotX / VRX）：质量、惯量来自 VRX wamv_base.urdf.xacro（"From WAM-V spec sheet"），推进器位置来自
+# wamv_aft_thrusters.xacro，水动力系数来自 VRX 的 SimpleHydrodynamics 插件参数（hydrodynamic_params_tutorial：线性 + 二次阻尼，附加质量 0），
+# 推力上限为 VRX 推进器插件的缺省值（maxForceFwd 250 N、maxForceRev −100 N，B 级）。
+schema: awr.vehicle.usv.v1
+profile_version: 1.0.0
+id: wamv
+display_name: "WAM-V 16-class USV"
+display_name_zh: "中型双体无人艇（WAM-V 16 级）"
+kind: usv
+status: identified
+reference: "VRX（osrf/vrx）WAM-V 模型"
+propulsion: {type: twin_fixed, hull: catamaran, body: flu}
+mass_kg: {value: 180.0, conf: A, src: "VRX wamv_base.urdf.xacro：mass 180.0"}
+inertia_zz_kgm2: {value: 446.0, conf: A, src: "VRX wamv_base.urdf.xacro：izz 446.0"}
+geometry:
+  length_m: {value: 4.9, conf: A, src: "VRX hydrodynamic_params_tutorial：hull_length 4.9"}
+  beam_m: {value: 2.48, conf: B, src: "派生：浮体中心线 ±1.03 m + 浮体直径 0.426 m"}
+  draft_m: {value: 0.2, conf: D, src: "模拟参考值：浮体半径 0.213 m 的约一半到全部"}
+  hull_beam_m: {value: 0.426, conf: A, src: "VRX：hull_radius 0.213 × 2"}
+  x_g_m: {value: 0.0, conf: D, src: "模拟参考值"}
+  cg_above_water_m: {value: 0.3, conf: D, src: "模拟参考值"}
+  collision_radius_m: {value: 2.75, conf: D, src: "派生：半对角线 √(4.9² + 2.48²)/2"}
+  size_m: {value: {l: 4.9, w: 2.48, h: 1.6}, conf: B, src: "VRX：长 4.9、宽按浮体位置推出；高为模拟参考值"}
+hydro:
+  model: fossen_3dof
+  a_u_kg: {value: 0.0, conf: A, src: "VRX SimpleHydrodynamics：xDotU 0.0"}
+  a_v_kg: {value: 0.0, conf: A, src: "VRX SimpleHydrodynamics：yDotV 0.0"}
+  a_r_kgm2: {value: 0.0, conf: A, src: "VRX SimpleHydrodynamics：nDotR 0.0"}
+  d_u: {value: 100.0, conf: A, src: "VRX SimpleHydrodynamics：xU 100.0"}
+  d_v: {value: 100.0, conf: A, src: "VRX SimpleHydrodynamics：yV 100.0"}
+  d_r: {value: 800.0, conf: A, src: "VRX SimpleHydrodynamics：nR 800.0"}
+  d_uu: {value: 150.0, conf: A, src: "VRX SimpleHydrodynamics：xUU 150.0"}
+  d_vv: {value: 100.0, conf: A, src: "VRX SimpleHydrodynamics：yVV 100.0"}
+  d_rr: {value: 800.0, conf: A, src: "VRX SimpleHydrodynamics：nRR 800.0"}
+  cd_crossflow: {value: 0.0, conf: A, src: "VRX 用二次横向阻尼，不用横流积分"}
+  rho_water_kgm3: {value: 1000.0, conf: D, src: "模拟参考值：VRX 淡水"}
+  cda_wind_m2: {value: 1.5, conf: D, src: "模拟参考值"}
+thrusters:
+  x_m: {value: -2.374, conf: A, src: "VRX wamv_aft_thrusters.xacro：x −2.373776"}
+  y_m: {value: 1.027, conf: A, src: "VRX wamv_aft_thrusters.xacro：y ±1.027135"}
+  k_pos: {value: 0.025, conf: B, src: "派生：maxForceFwd 250 N 于 n_max 100 rad/s（VRX 指令为归一化 −1…1，这里按 100 rad/s 换算）"}
+  k_neg: {value: 0.01, conf: B, src: "派生：maxForceRev 100 N 于 100 rad/s"}
+  n_max_rad_s: {value: 100.0, conf: D, src: "换算用的满转速"}
+  n_min_rad_s: {value: -100.0, conf: D, src: "换算用的满转速"}
+  tau_s: {value: 0.1, conf: D, src: "模拟参考值"}
+  v_max_mps: {value: 1.52, conf: B, src: "派生：2 × 250 N = 100 u + 150 u² 的平衡速度"}
+  a_max_mps2: {value: 0.5, conf: D, src: "模拟参考值"}
+  r_max_rad_s: {value: 0.4, conf: D, src: "模拟参考值"}
+  k_speed_hz: {value: 1.0, conf: D, src: "模拟参考值"}
+  k_yaw_hz: {value: 2.0, conf: D, src: "模拟参考值"}
+battery:
+  capacity_wh: {value: 2400.0, conf: D, src: "模拟参考值"}
+  p_cruise_w: {value: 400.0, conf: D, src: "模拟参考值"}
+  endurance_s: {value: 21600.0, conf: D, src: "模拟参考值：约 6 h"}
+fidelity: {default: l2, supported: [l0, l2]}
+model: model/model.yaml
+derived: {m_surge_kg: 180.0, m_sway_kg: 180.0, i_yaw_kgm2: 446.0, thrust_max_n: 500.0}

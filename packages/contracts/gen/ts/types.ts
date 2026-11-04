@@ -15183,6 +15183,474 @@ export interface Units {
   }[]
 }
 /**
+ * awr.device_catalog.usv.v1 (surface vessel catalog). `vehicles/usv/catalog.json`: the surface vessel packages the device ladder and the unified L2 engine know about; the sea counterpart of awr.device_catalog.ground.v1.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "UsvCatalog".
+ */
+export interface UsvCatalog {
+  schema: 'awr.device_catalog.usv.v1'
+  catalog_version: string
+  disclaimer_zh: string
+  /**
+   * @minItems 1
+   */
+  models: [
+    {
+      id: string
+      dir: string
+      profile_version: string
+      display_name: string
+      display_name_zh: string
+      category: 'usv'
+      size_class: 'small' | 'medium' | 'large'
+      reference: boolean
+      visible: boolean
+      order?: number
+      summary_zh: string
+    },
+    ...{
+      id: string
+      dir: string
+      profile_version: string
+      display_name: string
+      display_name_zh: string
+      category: 'usv'
+      size_class: 'small' | 'medium' | 'large'
+      reference: boolean
+      visible: boolean
+      order?: number
+      summary_zh: string
+    }[]
+  ]
+}
+/**
+ * awr.vehicle.usv.v1 (surface vessel profile). Surface vessel package `vehicles/usv/<dir>/params.yaml`: the sea counterpart of awr.vehicle.v1 with the same conventions (every physical value carries value / conf / src), read by the unified L2 engine's usv domain model (awr.phys.l2.usv) and by the device ladder (awr.sim.device). Dynamics follow Fossen's 3-DoF manoeuvring model (surge, sway, yaw): M = M_RB + M_A with the added-mass terms, Coriolis of both, linear plus quadratic damping and the 2-D cross-flow drag integral, twin fixed thrusters with a quadratic revolution-to-thrust law.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "UsvProfile".
+ */
+export interface UsvProfile {
+  schema: 'awr.vehicle.usv.v1'
+  profile_version: string
+  id: string
+  display_name: string
+  display_name_zh?: string
+  kind: 'usv'
+  status: 'regression' | 'placeholder' | 'identified'
+  /**
+   * the public platform this package is modelled on
+   */
+  reference?: string
+  propulsion: {
+    type: 'twin_fixed' | 'single_rudder' | 'azimuth'
+    hull: 'catamaran' | 'monohull'
+    body: 'flu'
+  }
+  mass_kg: UsvProfileQpos
+  inertia_zz_kgm2: UsvProfileQpos1
+  geometry: {
+    length_m: UsvProfileQpos2
+    beam_m: UsvProfileQpos3
+    draft_m: UsvProfileQpos4
+    hull_beam_m: UsvProfileQpos5
+    x_g_m: UsvProfileQ
+    cg_above_water_m: UsvProfileQ1
+    collision_radius_m: UsvProfileQpos6
+    size_m: {
+      value: {
+        l: number
+        w: number
+        h: number
+      }
+      conf: 'A' | 'B' | 'C' | 'D'
+      src: string
+    }
+  }
+  /**
+   * Fossen 3-DoF coefficients in SNAME sign convention magnitudes: added mass a_* = -X_udot etc. (kg, kg*m^2), linear damping d_* = -X_u etc. (N*s/m, N*m*s), quadratic d_** = -X_|u|u etc.
+   */
+  hydro: {
+    model: 'fossen_3dof'
+    a_u_kg: UsvProfileQnn
+    a_v_kg: UsvProfileQnn1
+    a_r_kgm2: UsvProfileQnn2
+    d_u: UsvProfileQnn3
+    d_v: UsvProfileQnn4
+    d_r: UsvProfileQnn5
+    d_uu: UsvProfileQnn6
+    d_vv: UsvProfileQnn7
+    d_rr: UsvProfileQnn8
+    cd_crossflow: UsvProfileQnn9
+    rho_water_kgm3: UsvProfileQpos7
+    cda_wind_m2?: UsvProfileQnn10
+  }
+  /**
+   * twin fixed thrusters at (x_m, ±y_m): thrust = k_pos*n|n| (n > 0) or k_neg*n|n| (n < 0), n first-order with tau_s
+   */
+  thrusters: {
+    x_m: UsvProfileQ2
+    y_m: UsvProfileQpos8
+    k_pos: UsvProfileQpos9
+    k_neg: UsvProfileQpos10
+    n_max_rad_s: UsvProfileQpos11
+    n_min_rad_s: UsvProfileQ3
+    tau_s: UsvProfileQpos12
+    v_max_mps: UsvProfileQpos13
+    a_max_mps2: UsvProfileQpos14
+    r_max_rad_s: UsvProfileQpos15
+    k_speed_hz?: UsvProfileQpos16
+    k_yaw_hz?: UsvProfileQpos17
+  }
+  battery?: {
+    capacity_wh?: UsvProfileQpos18
+    p_cruise_w?: UsvProfileQpos19
+    endurance_s?: UsvProfileQpos20
+  }
+  fidelity: {
+    default: 'l0' | 'l2'
+    /**
+     * @minItems 1
+     */
+    supported: ['l0' | 'l2', ...('l0' | 'l2')[]]
+  }
+  model: WorldCommonRelHref
+  sensors?: {
+    [k: string]: {
+      file: string
+      default?: boolean
+    }
+  }
+  derived?: {
+    [k: string]: number | null
+  }
+  notes?: string[]
+}
+/**
+ * total mass as operated (hull plus payload)
+ */
+export interface UsvProfileQpos {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * yaw inertia about the body origin
+ */
+export interface UsvProfileQpos1 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos2 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos3 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos4 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * beam of one hull (cross-flow drag strip)
+ */
+export interface UsvProfileQpos5 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * centre of gravity forward of the body origin
+ */
+export interface UsvProfileQ {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * body origin height above the waterline
+ */
+export interface UsvProfileQ1 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos6 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * surge added mass -X_udot
+ */
+export interface UsvProfileQnn {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * sway added mass -Y_vdot
+ */
+export interface UsvProfileQnn1 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * yaw added inertia -N_rdot
+ */
+export interface UsvProfileQnn2 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * linear surge damping -X_u, N*s/m
+ */
+export interface UsvProfileQnn3 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * linear sway damping -Y_v, N*s/m
+ */
+export interface UsvProfileQnn4 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * linear yaw damping -N_r, N*m*s
+ */
+export interface UsvProfileQnn5 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * quadratic surge damping -X_|u|u, N*s^2/m^2
+ */
+export interface UsvProfileQnn6 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * quadratic sway damping -Y_|v|v (0 when the cross-flow integral is used)
+ */
+export interface UsvProfileQnn7 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * quadratic yaw damping -N_|r|r
+ */
+export interface UsvProfileQnn8 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * 2-D cross-flow drag coefficient of the hull strip (Hoerner); 0 disables the integral
+ */
+export interface UsvProfileQnn9 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos7 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * above-water drag area for the wind force
+ */
+export interface UsvProfileQnn10 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQ2 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * half spacing
+ */
+export interface UsvProfileQpos8 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * forward thrust coefficient, N*s^2 (per thruster)
+ */
+export interface UsvProfileQpos9 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * reverse thrust coefficient, N*s^2 (per thruster)
+ */
+export interface UsvProfileQpos10 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos11 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * most negative revolution rate
+ */
+export interface UsvProfileQ3 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * revolution rate time constant
+ */
+export interface UsvProfileQpos12 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * speed reference limit (rated top speed)
+ */
+export interface UsvProfileQpos13 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * speed reference ramp limit
+ */
+export interface UsvProfileQpos14 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * yaw-rate reference limit
+ */
+export interface UsvProfileQpos15 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * speed loop proportional gain (1/s)
+ */
+export interface UsvProfileQpos16 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * yaw-rate loop proportional gain (1/s)
+ */
+export interface UsvProfileQpos17 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos18 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos19 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface UsvProfileQpos20 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "UsvProfileQ".
+ */
+export interface UsvProfileQ4 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "UsvProfileQnn".
+ */
+export interface UsvProfileQnn11 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "UsvProfileQpos".
+ */
+export interface UsvProfileQpos21 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
  * awr.vehicle_catalog.v1 (vehicles/catalog.json). Catalog index (AWR-20 §7.2; M21): models with visibility, order and nest kinds; sensor model library; battery packs and chargers. display_name, reference and profile_version repeat params.yaml and are checked equal (CI-1).
  *
  * This interface was referenced by `AwrContracts`'s JSON-Schema

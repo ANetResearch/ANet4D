@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/vehicle/1/usv_profile.schema.json",
+  "title": "awr.vehicle.usv.v1 (surface vessel profile)",
+  "description": "Surface vessel package `vehicles/usv/<dir>/params.yaml`: the sea counterpart of awr.vehicle.v1 with the same conventions (every physical value carries value / conf / src), read by the unified L2 engine's usv domain model (awr.phys.l2.usv) and by the device ladder (awr.sim.device). Dynamics follow Fossen's 3-DoF manoeuvring model (surge, sway, yaw): M = M_RB + M_A with the added-mass terms, Coriolis of both, linear plus quadratic damping and the 2-D cross-flow drag integral, twin fixed thrusters with a quadratic revolution-to-thrust law.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profile_version", "id", "display_name", "kind", "status", "propulsion", "mass_kg", "inertia_zz_kgm2", "geometry", "hydro", "thrusters", "fidelity", "model"],
+  "$defs": {
+    "q": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "number"},
+        "conf": {"enum": ["A", "B", "C", "D"]},
+        "src": {"type": "string", "minLength": 1},
+        "check": {"type": "string"}
+      },
+      "required": ["value", "conf", "src"]
+    },
+    "qpos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "number", "exclusiveMinimum": 0},
+        "conf": {"enum": ["A", "B", "C", "D"]},
+        "src": {"type": "string", "minLength": 1},
+        "check": {"type": "string"}
+      },
+      "required": ["value", "conf", "src"]
+    },
+    "qnn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "number", "minimum": 0},
+        "conf": {"enum": ["A", "B", "C", "D"]},
+        "src": {"type": "string", "minLength": 1},
+        "check": {"type": "string"}
+      },
+      "required": ["value", "conf", "src"]
+    }
+  },
+  "properties": {
+    "schema": {"const": "awr.vehicle.usv.v1"},
+    "profile_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "id": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+    "display_name": {"type": "string", "minLength": 1},
+    "display_name_zh": {"type": "string"},
+    "kind": {"const": "usv"},
+    "status": {"enum": ["regression", "placeholder", "identified"]},
+    "reference": {"type": "string", "description": "the public platform this package is modelled on"},
+    "propulsion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["twin_fixed", "single_rudder", "azimuth"]},
+        "hull": {"enum": ["catamaran", "monohull"]},
+        "body": {"const": "flu"}
+      },
+      "required": ["type", "hull", "body"]
+    },
+    "mass_kg": {"$ref": "#/$defs/qpos", "unit": "kg", "description": "total mass as operated (hull plus payload)"},
+    "inertia_zz_kgm2": {"$ref": "#/$defs/qpos", "unit": "kg*m^2", "description": "yaw inertia about the body origin"},
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "length_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "beam_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "draft_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "hull_beam_m": {"$ref": "#/$defs/qpos", "unit": "m", "description": "beam of one hull (cross-flow drag strip)"},
+        "x_g_m": {"$ref": "#/$defs/q", "unit": "m", "description": "centre of gravity forward of the body origin"},
+        "cg_above_water_m": {"$ref": "#/$defs/q", "unit": "m", "description": "body origin height above the waterline"},
+        "collision_radius_m": {"$ref": "#/$defs/qpos", "unit": "m"},
+        "size_m": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "value": {"type": "object", "additionalProperties": false, "properties": {"l": {"type": "number", "exclusiveMinimum": 0}, "w": {"type": "number", "exclusiveMinimum": 0}, "h": {"type": "number", "exclusiveMinimum": 0}}, "required": ["l", "w", "h"]},
+            "conf": {"enum": ["A", "B", "C", "D"]},
+            "src": {"type": "string", "minLength": 1}
+          },
+          "required": ["value", "conf", "src"]
+        }
+      },
+      "required": ["length_m", "beam_m", "draft_m", "hull_beam_m", "x_g_m", "cg_above_water_m", "collision_radius_m", "size_m"]
+    },
+    "hydro": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Fossen 3-DoF coefficients in SNAME sign convention magnitudes: added mass a_* = -X_udot etc. (kg, kg*m^2), linear damping d_* = -X_u etc. (N*s/m, N*m*s), quadratic d_** = -X_|u|u etc.",
+      "properties": {
+        "model": {"const": "fossen_3dof"},
+        "a_u_kg": {"$ref": "#/$defs/qnn", "unit": "kg", "description": "surge added mass -X_udot"},
+        "a_v_kg": {"$ref": "#/$defs/qnn", "unit": "kg", "description": "sway added mass -Y_vdot"},
+        "a_r_kgm2": {"$ref": "#/$defs/qnn", "unit": "kg*m^2", "description": "yaw added inertia -N_rdot"},
+        "d_u": {"$ref": "#/$defs/qnn", "description": "linear surge damping -X_u, N*s/m"},
+        "d_v": {"$ref": "#/$defs/qnn", "description": "linear sway damping -Y_v, N*s/m"},
+        "d_r": {"$ref": "#/$defs/qnn", "description": "linear yaw damping -N_r, N*m*s"},
+        "d_uu": {"$ref": "#/$defs/qnn", "description": "quadratic surge damping -X_|u|u, N*s^2/m^2"},
+        "d_vv": {"$ref": "#/$defs/qnn", "description": "quadratic sway damping -Y_|v|v (0 when the cross-flow integral is used)"},
+        "d_rr": {"$ref": "#/$defs/qnn", "description": "quadratic yaw damping -N_|r|r"},
+        "cd_crossflow": {"$ref": "#/$defs/qnn", "description": "2-D cross-flow drag coefficient of the hull strip (Hoerner); 0 disables the integral"},
+        "rho_water_kgm3": {"$ref": "#/$defs/qpos", "unit": "kg/m^3"},
+        "cda_wind_m2": {"$ref": "#/$defs/qnn", "unit": "m^2", "description": "above-water drag area for the wind force"}
+      },
+      "required": ["model", "a_u_kg", "a_v_kg", "a_r_kgm2", "d_u", "d_v", "d_r", "d_uu", "d_vv", "d_rr", "cd_crossflow", "rho_water_kgm3"]
+    },
+    "thrusters": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "twin fixed thrusters at (x_m, ±y_m): thrust = k_pos*n|n| (n > 0) or k_neg*n|n| (n < 0), n first-order with tau_s",
+      "properties": {
+        "x_m": {"$ref": "#/$defs/q", "unit": "m"},
+        "y_m": {"$ref": "#/$defs/qpos", "unit": "m", "description": "half spacing"},
+        "k_pos": {"$ref": "#/$defs/qpos", "description": "forward thrust coefficient, N*s^2 (per thruster)"},
+        "k_neg": {"$ref": "#/$defs/qpos", "description": "reverse thrust coefficient, N*s^2 (per thruster)"},
+        "n_max_rad_s": {"$ref": "#/$defs/qpos", "unit": "rad/s"},
+        "n_min_rad_s": {"$ref": "#/$defs/q", "unit": "rad/s", "description": "most negative revolution rate"},
+        "tau_s": {"$ref": "#/$defs/qpos", "unit": "s", "description": "revolution rate time constant"},
+        "v_max_mps": {"$ref": "#/$defs/qpos", "unit": "m/s", "description": "speed reference limit (rated top speed)"},
+        "a_max_mps2": {"$ref": "#/$defs/qpos", "unit": "m/s^2", "description": "speed reference ramp limit"},
+        "r_max_rad_s": {"$ref": "#/$defs/qpos", "unit": "rad/s", "description": "yaw-rate reference limit"},
+        "k_speed_hz": {"$ref": "#/$defs/qpos", "unit": "Hz", "description": "speed loop proportional gain (1/s)"},
+        "k_yaw_hz": {"$ref": "#/$defs/qpos", "unit": "Hz", "description": "yaw-rate loop proportional gain (1/s)"}
+      },
+      "required": ["x_m", "y_m", "k_pos", "k_neg", "n_max_rad_s", "n_min_rad_s", "tau_s", "v_max_mps", "a_max_mps2", "r_max_rad_s"]
+    },
+    "battery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "capacity_wh": {"$ref": "#/$defs/qpos", "unit": "Wh"},
+        "p_cruise_w": {"$ref": "#/$defs/qpos", "unit": "W"},
+        "endurance_s": {"$ref": "#/$defs/qpos", "unit": "s"}
+      }
+    },
+    "fidelity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {"enum": ["l0", "l2"]},
+        "supported": {"type": "array", "items": {"enum": ["l0", "l2"]}, "minItems": 1}
+      },
+      "required": ["default", "supported"]
+    },
+    "model": {"$ref": "../../world/1/common.schema.json#/$defs/relHref"},
+    "sensors": {"type": "object", "additionalProperties": {"type": "object", "properties": {"file": {"type": "string"}, "default": {"type": "boolean"}}, "required": ["file"]}},
+    "derived": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

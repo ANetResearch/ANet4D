@@ -1,0 +1,8 @@
+# model/model.yaml（awr.vehicle_model.v1）：无人艇暂无网格，占位（source: null，低模由后续工具按 size_m 生成）。
+schema: awr.vehicle_model.v1
+source: null
+outputs: []
+axes:
+  gltf_from_flu: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+origin: base_link
+fallback: lowpoly_only

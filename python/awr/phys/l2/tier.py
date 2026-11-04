@@ -9,11 +9,14 @@ force from the velocity difference). What differs from Fast is the plant: every 
 - ``multirotor`` (``awr.phys.l2.multirotor``): rotor-level actuation, PX4 rate loop, control allocation, composite
   aerodynamics; references from ``RefTracker`` (PX4-lite refgen, ``inner_pid`` mode);
 - ``ugv`` (``awr.phys.l2.ugv``): single-track dynamics with linear tyres, load transfer, steering and drive limits,
-  terrain following; references from ``GroundTracker`` (the shared M24 tracker as speed and heading).
+  terrain following; references from ``GroundTracker`` (the shared M24 tracker as speed and heading);
+- ``usv`` (``awr.phys.l2.usv``): Fossen 3-DoF manoeuvring dynamics (added mass, Coriolis, linear + quadratic + cross-flow
+  damping), twin thrusters with shaft lag, current and wind; references from ``WaterTracker`` (speed and heading, hover as
+  station keeping).
 
 A vehicle's family comes from its package: air vehicles through the FleetSim profile table (``frame_kind``), ground
-vehicles through ``vehicles/ground`` (``awr.phys.l2.ground``). Fixed wings, VTOL and surface vessels join the same body and
-the same tier as their models land; until then the tier rejects them with 630 instead of pretending.
+vehicles through ``vehicles/ground`` and surface vessels through ``vehicles/usv`` (``awr.phys.l2.ground``). Fixed wings and
+VTOL join the same body and the same tier as their models land; until then the tier rejects them with 630 instead of pretending.
 
 Contact:
 - air: ground = ``ground(xy)`` (DSM nearest cell of ``world``, or a callable) + ``GEAR_Z_M``; touching the ground faster than
@@ -22,6 +25,9 @@ Contact:
   1.0 s (other), never within ``TAKEOFF_GRACE_S`` of a flight command;
 - ground vehicles ride on ``ground(xy)`` + cg height with the attitude on the terrain normal; a DSM rise above ``SNAP_M``
   within one step (a wall, a curb) is COLLISION_WORLD;
+- surface vessels ride on the water level ``water_z`` (one level per tier) + cg height above water, yaw-only attitude;
+  ``ground(xy) > water_z − draft`` is a grounding (COLLISION_WORLD, detector ``dsm``; without a world or ``ground`` the water
+  is deep); the vessel stays where it struck;
 - world geometry (both): when ``world`` offers ``closest_points_batch`` the exact distance is refreshed whenever the lower
   bound (last distance minus displacement since) drops below ``collision_radius + MARGIN_M``; a point within the collision
   radius outside the 45° cone below the body is COLLISION_WORLD (the vehicle returns to its last position, keeps only its
@@ -65,10 +71,11 @@ from awr.phys.l2.multirotor import MultirotorFleet, MultirotorParams
 from awr.phys.pose_history import G_W, STATE_N, PoseHistoryBuffer
 from awr.phys.tracker import RefTracker
 
-__all__ = ["COMMANDS", "DOMAINS", "GROUND_COMMANDS", "IMPLEMENTED", "MARGIN_M", "MU_GROUND", "L2Tier", "domain_of"]
+__all__ = ["COMMANDS", "DOMAINS", "GROUND_COMMANDS", "IMPLEMENTED", "MARGIN_M", "MU_GROUND", "WATER_COMMANDS", "L2Tier", "domain_of"]
 
 COMMANDS = ("velocity", "goto", "follow_path", "orbit", "hover", "takeoff", "land", "kill")
 GROUND_COMMANDS = ("velocity", "goto", "follow_path", "orbit", "hover", "kill")
+WATER_COMMANDS = GROUND_COMMANDS
 MAX_PATH_POINTS = 256
 MARGIN_M = 0.5
 COS_NADIR = math.cos(math.radians(45.0))
@@ -77,7 +84,7 @@ SNAP_M = 0.3                                      # a DSM rise above this within
 LEVEL_TAU_S = 0.1                                 # on the ground the body levels with this time constant
 _FLY = frozenset({"takeoff", "goto", "velocity", "follow_path", "orbit"})
 DOMAINS = {0: "multirotor", 1: "fixed_wing", 2: "vtol"}   # FleetSim frame_kind → domain model name
-IMPLEMENTED = ("multirotor", "ugv")
+IMPLEMENTED = ("multirotor", "ugv", "usv")
 
 
 def domain_of(prof) -> str:
@@ -156,6 +163,39 @@ class _Ground:
         self.fleet.stop(np.array([li]))
 
 
+class _Water:
+    """The surface vessel group: its own RigidState, Fossen 3-DoF fleet model and speed / heading tracker."""
+
+    name = "usv"
+
+    def __init__(self, tier: L2Tier, members: list[tuple[str, int]], params: list) -> None:
+        from awr.phys.l2.usv import UsvFleet, WaterTracker
+
+        self.uavs = [u for u, _ in members]
+        self.gi = np.array([g for _, g in members], np.int64)
+        self.fleet = UsvFleet(params)
+        self.n = len(members)
+        self.S = RB.RigidState(self.n)
+        self.S.m[:] = self.fleet.m
+        self.S.J[:, 0] = self.fleet.I
+        self.S.J[:, 1] = self.fleet.I
+        self.S.J[:, 2] = self.fleet.I
+        self.tracker = WaterTracker({u: p for u, p in zip(self.uavs, params, strict=True)}, tick_s=tier.tick_ms / 1000.0)
+        self.wind = np.zeros((self.n, 3))
+        self.current = np.zeros((self.n, 2))
+        self.rho = np.full(self.n, 1.225)
+        self._v_prev = np.zeros((self.n, 3))
+        self._a_w = np.zeros((self.n, 3))
+        self.collision_r = self.fleet.collision_r
+        self.draft = self.fleet.T
+        self.speed_sp = np.zeros(self.n)
+        self.head_sp = np.full(self.n, np.nan)
+        self.enabled = np.ones(self.n, bool)
+
+    def stop(self, li: int) -> None:
+        self.fleet.stop(np.array([li]))
+
+
 class _Kinds:
     def __init__(self, tier: L2Tier) -> None:
         self._t = tier
@@ -170,16 +210,17 @@ class _Kinds:
 
 class L2Tier:
     """See the module docstring. ``spawn[u] = ((x, y, z), yaw)`` with z the body-origin height for air spawns; ground
-    vehicles are always placed on the terrain."""
+    vehicles are always placed on the terrain, surface vessels on the water level ``water_z``."""
 
     name = "l2"
 
     def __init__(self, uavs: Sequence[str], spawn: Mapping[str, tuple[tuple[float, float, float], float]], world: Any = None, *,
                  grounded: Sequence[str] | None = None, vehicles: Mapping[str, str] | None = None,
                  clock_profile: str | Mapping | ClockProfile | None = "d1_250", tick_ms: int = 100, outputs: Sequence[str] = (),
-                 ground: Callable[[np.ndarray], float] | None = None, history_s: float = 2.0, retain_s: float | None = 1.0) -> None:
+                 ground: Callable[[np.ndarray], float] | None = None, water_z: float = 0.0, history_s: float = 2.0,
+                 retain_s: float | None = 1.0) -> None:
         from awr.phys.fast import check_physics_hz, clock_of, resolve_profile
-        from awr.phys.l2.ground import GroundTable
+        from awr.phys.l2.ground import GroundTable, UsvTable
         from awr.sim.fleet.profiles import ProfileTable
 
         self.uavs = tuple(uavs)
@@ -194,9 +235,11 @@ class L2Tier:
         self.dt = self.step_ns * 1e-9
         self.world = world
         self._ground = ground
+        self.water_z = float(water_z)
         self.history_s, self.retain_s = float(history_s), retain_s
         vehicles = dict(vehicles or {})
         GT = GroundTable()
+        UT = UsvTable()
         T = None
         self.profile_ids: dict[str, str] = {}
         self.domains: dict[str, str] = {}
@@ -204,6 +247,8 @@ class L2Tier:
         air_params: list[MultirotorParams] = []
         gnd: list[tuple[str, int]] = []
         gnd_params = []
+        sea: list[tuple[str, int]] = []
+        sea_params = []
         for gi, u in enumerate(self.uavs):
             ref = vehicles.get(u, "x500")
             if GT.has(ref):
@@ -211,6 +256,12 @@ class L2Tier:
                 self.profile_ids[u], self.domains[u] = pid, "ugv"
                 gnd.append((u, gi))
                 gnd_params.append(GT.get(pid))
+                continue
+            if UT.has(ref):
+                pid = UT.key(ref)
+                self.profile_ids[u], self.domains[u] = pid, "usv"
+                sea.append((u, gi))
+                sea_params.append(UT.get(pid))
                 continue
             if T is None:
                 T = ProfileTable()
@@ -224,7 +275,8 @@ class L2Tier:
             air_params.append(MultirotorParams.from_profile(prof, T.limits[T.limit_ids[T.limits_index(None, pid)]]))
         self.air = _Air(self, air, air_params, self.profile_ids) if air else None
         self.gnd = _Ground(self, gnd, gnd_params) if gnd else None
-        self.groups = [g for g in (self.air, self.gnd) if g is not None]
+        self.sea = _Water(self, sea, sea_params) if sea else None
+        self.groups = [g for g in (self.air, self.gnd, self.sea) if g is not None]
         self.collision_r = np.zeros(self.n)
         for g in self.groups:
             self.collision_r[g.gi] = g.collision_r
@@ -240,6 +292,13 @@ class L2Tier:
                 A.S.p[li] = p
                 A.S.q[li] = RB.q_from_yaw(float(yaw))
                 self._v.append(_V(u, gi, "ugv", li, landed=False, contact=True))
+            elif self.domains[u] == "usv":
+                A = self.sea
+                li = A.uavs.index(u)
+                p[2] = self.water_z + A.fleet.h[li]
+                A.S.p[li] = p
+                A.S.q[li] = RB.q_from_yaw(float(yaw))
+                self._v.append(_V(u, gi, "usv", li, landed=False, contact=True))
             else:
                 A = self.air
                 li = A.uavs.index(u)
@@ -260,9 +319,14 @@ class L2Tier:
         self.digest = hashlib.sha256()
         self._ticks = 0
         self._physics_ns = 0
-        self.stats = {"collision_queries": 0, "crashes": 0, "ground_snaps": 0}
+        self.stats = {"collision_queries": 0, "crashes": 0, "ground_snaps": 0, "groundings": 0}
 
     # ------------------------------------------------------------------------------------------------------ world
+    @property
+    def has_floor(self) -> bool:
+        """Whether there is terrain under the water at all (a world DSM or a ``ground`` callable); without one the water is deep."""
+        return self._ground is not None or self.world is not None
+
     def ground_h(self, xy) -> float:
         xy = np.asarray(xy, np.float64).reshape(-1)[:2]
         if self._ground is not None:
@@ -282,12 +346,20 @@ class L2Tier:
         for g in self.groups:
             g.wind = w[g.gi]
 
+    def set_current(self, current_enu: np.ndarray) -> None:
+        """Per-vehicle water current (n, 2 or 3) ENU for the coming steps; only surface vessels feel it."""
+        if self.sea is None:
+            return
+        cur = np.array(current_enu, np.float64).reshape(self.n, -1)[:, :2]
+        self.sea.current = cur[self.sea.gi]
+
     def caps(self) -> dict:
         return {"tier": self.name, "physics_hz": self.cp.physics_hz, "pose_history_hz": self.cp.physics_hz, "steps_per_tick": self.n_steps,
                 "clock_mode": "lockstep", "clock_profile": {"name": self.cp.name, "main_hz": self.cp.main_hz, "physics_hz": self.cp.physics_hz,
                                                             "l1_hz": self.cp.l1_hz},
                 "ranked_allowed": False, "determinism": "1b", "requires_gpu": False, "max_vehicles": 1024,
                 "frame_kinds": list(IMPLEMENTED), "domains": list(IMPLEMENTED), "commands": list(COMMANDS), "ground_commands": list(GROUND_COMMANDS),
+                "water_commands": list(WATER_COMMANDS), "water_z_m": self.water_z,
                 "engine": "awr.phys.l2", "collision": bool(self.world is not None and hasattr(self.world, "closest_points_batch"))}
 
     # ------------------------------------------------------------------------------------------------------ samples
@@ -327,6 +399,8 @@ class L2Tier:
                 out.append(DispatchResult(c.uav, False, 630, detail=f"{c.kind} is not a tier command"))
             elif self.domains[c.uav] == "ugv" and c.kind not in GROUND_COMMANDS:
                 out.append(DispatchResult(c.uav, False, 630, detail=f"{c.kind} is not a ground vehicle command"))
+            elif self.domains[c.uav] == "usv" and c.kind not in WATER_COMMANDS:
+                out.append(DispatchResult(c.uav, False, 630, detail=f"{c.kind} is not a surface vessel command"))
             elif c.kind == "follow_path" and (c.path_enu_m is None or not 1 <= len(c.path_enu_m) <= MAX_PATH_POINTS):
                 out.append(DispatchResult(c.uav, False, 630, detail=f"follow_path needs 1..{MAX_PATH_POINTS} points"))
             elif c.kind == "orbit" and (c.orbit is None or not 1.0 <= c.orbit.radius_m <= 1000.0):
@@ -337,7 +411,7 @@ class L2Tier:
         return out
 
     def _group(self, v: _V):
-        return self.air if v.dom == "multirotor" else self.gnd
+        return self.air if v.dom == "multirotor" else self.gnd if v.dom == "ugv" else self.sea
 
     # ------------------------------------------------------------------------------------------------------ tick
     def advance(self, k: int) -> TickResult:
@@ -358,7 +432,7 @@ class L2Tier:
             v.still_ns = 0
         self._pending = keep
         rows = self._rows()
-        A, Gd = self.air, self.gnd
+        A, Gd, W = self.air, self.gnd, self.sea
         if A is not None:
             self._observe_air(rows)
             plan = A.tracker.plan(k, self.t_k_ns, self.n_steps)
@@ -378,6 +452,10 @@ class L2Tier:
             for i, u in enumerate(Gd.uavs):
                 r = rows[Gd.gi[i]]
                 Gd.speed_sp[i], Gd.head_sp[i], Gd.enabled[i] = Gd.tracker.setpoint(u, r[0:3], r[7:10], r[3:7])
+        if W is not None:
+            for i, u in enumerate(W.uavs):
+                r = rows[W.gi[i]]
+                W.speed_sp[i], W.head_sp[i], W.enabled[i] = W.tracker.setpoint(u, r[0:3], r[7:10], r[3:7], (float(W.current[i, 0]), float(W.current[i, 1])))
         contacts: list[ContactEvent] = []
         for j in range(self.n_steps):
             t_ns = self.t_k_ns + (j + 1) * self.step_ns
@@ -387,6 +465,8 @@ class L2Tier:
                 p_prev["multirotor"] = self._step_air(V[j], AF[j], YAW[j], YR[j], EN[j], t_ns, contacts)
             if Gd is not None:
                 p_prev["ugv"] = self._step_ground(t_ns, contacts)
+            if W is not None:
+                p_prev["usv"] = self._step_water(t_ns, contacts)
             self._collide(p_prev, t_ns, contacts)
             for g in self.groups:
                 g._a_w = (g.S.v - g._v_prev) / self.dt
@@ -533,6 +613,42 @@ class L2Tier:
         Gd._v_prev = v0
         return p_prev
 
+    # ------------------------------------------------------------------------------------------------------ water step
+    def _step_water(self, t_ns: int, contacts: list[ContactEvent]) -> np.ndarray:
+        W = self.sea
+        S, F, dt = W.S, W.fleet, self.dt
+        vs = [v for v in self._v if v.dom == "usv"]
+        crashed = np.array([v.crash != "none" for v in vs])
+        en = W.enabled & ~crashed
+        p_prev = S.p.copy()
+        v0 = S.v.copy()
+        F.step(S, np.where(crashed, 0.0, W.speed_sp), W.head_sp, en, W.wind, W.current, dt)
+        yaw = RB.yaw_of(S.q)
+        for v in vs:
+            i = v.li
+            if v.crash != "none":
+                S.p[i] = p_prev[i]
+                S.v[i] = 0.0
+                S.w[i] = 0.0
+                continue
+            if self.has_floor and self.ground_h(S.p[i, :2]) > self.water_z - W.draft[i]:   # the sea floor rises into the hull: grounded
+                v.crash = "world"
+                self.stats["crashes"] += 1
+                self.stats["groundings"] += 1
+                at = S.p[i].copy()
+                S.p[i] = p_prev[i]
+                S.v[i] = 0.0
+                S.w[i] = 0.0
+                F.stop(np.array([i]))
+                contacts.append(ContactEvent(v.uav, t_ns, "COLLISION_WORLD", "dsm", tuple(float(x) for x in at), None, float(np.linalg.norm(v0[i]))))
+                continue
+            S.p[i, 2] = self.water_z + F.h[i]                                            # 3-DoF: no heave, roll or pitch
+            S.v[i, 2] = 0.0
+            S.q[i] = RB.q_from_yaw(float(yaw[i]))
+            S.w[i, :2] = 0.0
+        W._v_prev = v0
+        return p_prev
+
     # ------------------------------------------------------------------------------------------------------ collision
     def _collide(self, p_prev: Mapping[str, np.ndarray], t_ns: int, contacts: list[ContactEvent]) -> None:
         w = self.world
@@ -552,8 +668,8 @@ class L2Tier:
             if v.clear_m < r + MARGIN_M:
                 ask.append(v)
                 pt = g.S.p[v.li].copy()
-                if v.dom == "ugv":
-                    pt[2] += r                                                   # query above the cg: the surface the car rides on is not an obstacle
+                if v.dom in ("ugv", "usv"):
+                    pt[2] += r                                                   # query above the cg: the surface the vehicle rides on is not an obstacle
                 q.append(pt)
         if not ask:
             return
@@ -590,12 +706,13 @@ class L2Tier:
         out = {}
         for v in self._v:
             g = self._group(v)
-            if v.dom == "ugv":
+            if v.dom in ("ugv", "usv"):
                 if v.crash != "none":
                     out[v.uav] = VehicleStatus.CRASHED
                 else:
-                    moving = bool(np.any(g.S.v[v.li, :2] != 0.0)) or g.speed_sp[v.li] > 0.0
-                    out[v.uav] = VehicleStatus.MOVING if moving else VehicleStatus.GROUNDED
+                    moving = bool(np.any(g.S.v[v.li, :2] != 0.0)) or g.speed_sp[v.li] > 0.0 or (v.dom == "usv" and bool(g.S.w[v.li, 2] != 0.0))
+                    rest = VehicleStatus.GROUNDED if v.dom == "ugv" else VehicleStatus.AFLOAT
+                    out[v.uav] = VehicleStatus.MOVING if moving else rest
                 continue
             kind = g.tracker.kind(v.uav)
             out[v.uav] = derive_status(StatusSignals(crash_cause=v.crash, landed=v.landed, in_air=not v.landed and v.crash == "none",
@@ -609,7 +726,7 @@ class L2Tier:
 
     @property
     def fleet(self):
-        """The multirotor fleet model (rotor speeds, integrators); ``gnd.fleet`` is the ground vehicles' model."""
+        """The multirotor fleet model (rotor speeds, integrators); ``gnd.fleet`` / ``sea.fleet`` are the ground vehicles' and vessels' models."""
         return self.air.fleet if self.air is not None else None
 
     def kind(self, uav: str) -> str:

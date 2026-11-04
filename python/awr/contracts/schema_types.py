@@ -1140,6 +1140,21 @@ __all__ = [
     "Units",
     "UnitsExceptions",
     "UnitsSuffixes",
+    "UsvCatalog",
+    "UsvCatalogModels",
+    "UsvProfile",
+    "UsvProfileBattery",
+    "UsvProfileFidelity",
+    "UsvProfileGeometry",
+    "UsvProfileGeometrySizeM",
+    "UsvProfileGeometrySizeMValue",
+    "UsvProfileHydro",
+    "UsvProfilePropulsion",
+    "UsvProfileQ",
+    "UsvProfileQnn",
+    "UsvProfileQpos",
+    "UsvProfileSensors",
+    "UsvProfileThrusters",
     "VehicleCatalog",
     "VehicleCatalogChargers",
     "VehicleCatalogModelDetail",
@@ -11542,6 +11557,162 @@ class UnitsExceptions(TypedDict):
 class UnitsSuffixes(TypedDict):
     unit: str
     quantity: str
+
+
+# vehicle/usv_catalog.schema.json# awr.device_catalog.usv.v1 (surface vessel catalog)
+class UsvCatalog(TypedDict):
+    schema: Literal["awr.device_catalog.usv.v1"]
+    catalog_version: str
+    disclaimer_zh: str
+    models: list[UsvCatalogModels]
+
+
+# vehicle/usv_catalog.schema.json#/properties/models/items
+class UsvCatalogModels(TypedDict):
+    id: str
+    dir: str
+    profile_version: str
+    display_name: str
+    display_name_zh: str
+    category: Literal["usv"]
+    size_class: Literal["small", "medium", "large"]
+    reference: bool
+    visible: bool
+    order: NotRequired[int]
+    summary_zh: str
+
+
+# vehicle/usv_profile.schema.json# awr.vehicle.usv.v1 (surface vessel profile)
+class UsvProfile(TypedDict):
+    schema: Literal["awr.vehicle.usv.v1"]
+    profile_version: str
+    id: str
+    display_name: str
+    display_name_zh: NotRequired[str]
+    kind: Literal["usv"]
+    status: Literal["regression", "placeholder", "identified"]
+    reference: NotRequired[str]
+    propulsion: UsvProfilePropulsion
+    mass_kg: UsvProfileQpos
+    inertia_zz_kgm2: UsvProfileQpos
+    geometry: UsvProfileGeometry
+    hydro: UsvProfileHydro
+    thrusters: UsvProfileThrusters
+    battery: NotRequired[UsvProfileBattery]
+    fidelity: UsvProfileFidelity
+    model: WorldCommonRelHref
+    sensors: NotRequired[dict[str, UsvProfileSensors]]
+    derived: NotRequired[dict[str, float | None]]
+    notes: NotRequired[list[str]]
+
+
+# vehicle/usv_profile.schema.json#/properties/battery
+class UsvProfileBattery(TypedDict):
+    capacity_wh: NotRequired[UsvProfileQpos]
+    p_cruise_w: NotRequired[UsvProfileQpos]
+    endurance_s: NotRequired[UsvProfileQpos]
+
+
+# vehicle/usv_profile.schema.json#/properties/fidelity
+class UsvProfileFidelity(TypedDict):
+    default: Literal["l0", "l2"]
+    supported: list[Literal["l0", "l2"]]
+
+
+# vehicle/usv_profile.schema.json#/properties/geometry
+class UsvProfileGeometry(TypedDict):
+    length_m: UsvProfileQpos
+    beam_m: UsvProfileQpos
+    draft_m: UsvProfileQpos
+    hull_beam_m: UsvProfileQpos
+    x_g_m: UsvProfileQ
+    cg_above_water_m: UsvProfileQ
+    collision_radius_m: UsvProfileQpos
+    size_m: UsvProfileGeometrySizeM
+
+
+# vehicle/usv_profile.schema.json#/properties/geometry/properties/size_m
+class UsvProfileGeometrySizeM(TypedDict):
+    value: UsvProfileGeometrySizeMValue
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+
+
+# vehicle/usv_profile.schema.json#/properties/geometry/properties/size_m/properties/value
+class UsvProfileGeometrySizeMValue(TypedDict):
+    l: float  # noqa: E741
+    w: float
+    h: float
+
+
+# vehicle/usv_profile.schema.json#/properties/hydro
+class UsvProfileHydro(TypedDict):
+    model: Literal["fossen_3dof"]
+    a_u_kg: UsvProfileQnn
+    a_v_kg: UsvProfileQnn
+    a_r_kgm2: UsvProfileQnn
+    d_u: UsvProfileQnn
+    d_v: UsvProfileQnn
+    d_r: UsvProfileQnn
+    d_uu: UsvProfileQnn
+    d_vv: UsvProfileQnn
+    d_rr: UsvProfileQnn
+    cd_crossflow: UsvProfileQnn
+    rho_water_kgm3: UsvProfileQpos
+    cda_wind_m2: NotRequired[UsvProfileQnn]
+
+
+# vehicle/usv_profile.schema.json#/properties/propulsion
+class UsvProfilePropulsion(TypedDict):
+    type: Literal["twin_fixed", "single_rudder", "azimuth"]
+    hull: Literal["catamaran", "monohull"]
+    body: Literal["flu"]
+
+
+# vehicle/usv_profile.schema.json#/$defs/q
+class UsvProfileQ(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/usv_profile.schema.json#/$defs/qnn
+class UsvProfileQnn(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/usv_profile.schema.json#/$defs/qpos
+class UsvProfileQpos(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/usv_profile.schema.json#/properties/sensors/additionalProperties
+class UsvProfileSensors(TypedDict):
+    file: str
+    default: NotRequired[bool]
+
+
+# vehicle/usv_profile.schema.json#/properties/thrusters
+class UsvProfileThrusters(TypedDict):
+    x_m: UsvProfileQ
+    y_m: UsvProfileQpos
+    k_pos: UsvProfileQpos
+    k_neg: UsvProfileQpos
+    n_max_rad_s: UsvProfileQpos
+    n_min_rad_s: UsvProfileQ
+    tau_s: UsvProfileQpos
+    v_max_mps: UsvProfileQpos
+    a_max_mps2: UsvProfileQpos
+    r_max_rad_s: UsvProfileQpos
+    k_speed_hz: NotRequired[UsvProfileQpos]
+    k_yaw_hz: NotRequired[UsvProfileQpos]
 
 
 # vehicle/catalog.schema.json# awr.vehicle_catalog.v1 (vehicles/catalog.json)

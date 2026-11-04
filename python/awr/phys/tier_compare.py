@@ -36,6 +36,8 @@ Realistic 侧以测试构建的运动学注入（`Drone4DClock` `<inject>`，`in
   python -m awr.phys.tier_compare report --out DIR                                 # 汇总为 DIR/tier_compare.json
   python -m awr.phys.tier_compare run --set ground --tier l2|st --out DIR          # 地面域：统一引擎 ugv 对 CommonRoad ST 基准
   python -m awr.phys.tier_compare report --set ground --tiers l2,st --out DIR      # DIR/tier_compare.ground.l2-st.json
+  python -m awr.phys.tier_compare run --set water --tier l2|fossen --out DIR       # 海面域：统一引擎 usv 对 Fossen 三自由度基准
+  python -m awr.phys.tier_compare report --set water --tiers l2,fossen --out DIR   # DIR/tier_compare.water.l2-fossen.json
 """
 
 from __future__ import annotations
@@ -56,9 +58,32 @@ import numpy as np
 from awr.phys.adapter import OrbitSpec, TierCommand
 from awr.phys.pose_history import STATE_N
 
-__all__ = ["CASES", "GROUND_CASES", "IMU_TOL", "REF_CASE", "SCHEMA", "BoxWorld", "Case", "CaseRun", "ConstWind", "build_report", "case_metrics",
-           "compare_case", "inject_sdf", "lidar_point_poses", "m25_compare", "m25_digest", "pose_history_diff", "run_case",
-           "run_fast", "run_l2", "run_realistic", "run_st", "write_inject"]
+__all__ = [
+    "CASES",
+    "GROUND_CASES",
+    "IMU_TOL",
+    "REF_CASE",
+    "SCHEMA",
+    "WATER_CASES",
+    "BoxWorld",
+    "Case",
+    "CaseRun",
+    "ConstWind",
+    "build_report",
+    "case_metrics",
+    "compare_case",
+    "inject_sdf",
+    "lidar_point_poses",
+    "m25_compare",
+    "m25_digest",
+    "pose_history_diff",
+    "run_case",
+    "run_fast",
+    "run_l2",
+    "run_realistic",
+    "run_st",
+    "write_inject",
+]
 
 SCHEMA = "drone4d.phys.tier_compare.v1"
 TICK_MS = 100
@@ -396,6 +421,49 @@ GROUND_CASES: tuple[Case, ...] = (
 )
 
 
+# 海面域用例（统一引擎 usv 域模型对 Fossen 三自由度基准，`--set water`）：机型缺省 Otter 级（MSS otter.py 参数，A 级），
+# 另两艘（WAM-V 16 级、BlueBoat 级）各一个用例看参数是否起作用；流中定点是两档各自的上界；搁浅用例只有引擎（基准无世界）
+AF_ = "AFLOAT"
+_WSQ = np.array([[40.0, 0.0, 0.0], [40.0, 40.0, 0.0], [0.0, 40.0, 0.0], [0.0, 0.0, 0.0]])
+WATER_CASES: tuple[Case, ...] = (
+    Case("w_speed_step", "静止 → 2 m/s 速度阶跃 → 停船", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 300,
+         {5: (_c("b1", "velocity", 5, vel_enu_mps=(2.0, 0.0, 0.0)),), 200: (_c("b1", "velocity", 200, vel_enu_mps=(0.0, 0.0, 0.0)),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"rise_s": 0.5, "overshoot_pct": 10.0, "pos_rms_m": 1.0},
+         params={"metric": "velocity_step", "step_tick": 5, "v_mps": 2.0, "until_tick": 200}, vehicle="otter"),
+    Case("w_speed_limit", "10 m/s 速度指令按 3.09 m/s（6 kn）限幅", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 300,
+         {5: (_c("b1", "velocity", 5, vel_enu_mps=(10.0, 0.0, 0.0)),)},
+         expect_status={"b1": (AF_, M_)}, tol={"v_steady_mps": 0.3},
+         params={"metric": "velocity_limit", "v_cap_mps": 3.086, "cap_margin_mps": 0.2}, vehicle="otter"),
+    Case("w_goto_stop", "goto 到 (30, 15) 并停船，2 m/s", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 400,
+         {5: (_c("b1", "goto", 5, target_enu_m=(30.0, 15.0, 0.0), speed_mps=2.0),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"t_arrive_s": 2.0, "rest_err_m": 1.5, "pos_rms_m": 2.0},
+         params={"metric": "goto_stop", "start_tick": 5, "target": (30.0, 15.0)}, vehicle="otter"),
+    Case("w_waypoints", "40 m × 40 m 方形航线，2 m/s", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 1200,
+         {5: (_c("b1", "follow_path", 5, path_enu_m=_WSQ, speed_mps=2.0),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"pos_rms_m": 3.0, "arrival_s_per_100m": 3.0},
+         params={"metric": "waypoints", "start_tick": 5, "path": _WSQ.tolist()}, vehicle="otter"),
+    Case("w_orbit", "半径 10 m、1.5 m/s 绕一圈", {"b1": ((10.0, 0.0, 0.0), math.pi / 2)}, 800,
+         {5: (_c("b1", "orbit", 5, orbit=OrbitSpec((0.0, 0.0, 0.0), 10.0, cw=False, turns=1.0), speed_mps=1.5),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"pos_rms_m": 3.0, "arrival_s_per_100m": 3.0, "radius_rms_m": 1.0},
+         params={"metric": "orbit", "start_tick": 5, "center": (0.0, 0.0, 0.0), "radius_m": 10.0}, vehicle="otter"),
+    Case("w_current_hold", "0.5 m/s 水流中定点（hover 为保位）", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 600, {0: (_c("b1", "hover", 0),)},
+         expect_status={"b1": (M_,)}, tol={"drift_max_m": 8.0, "offset_steady_m": 1.0, "pos_rms_m": 2.0},
+         params={"metric": "station_keep", "current": (0.5, 0.0), "steady_from_s": 30.0}, vehicle="otter"),
+    Case("w_grounding", "2 m/s 驶向 5 % 坡的岸边直至搁浅（只有引擎：基准无世界）", {"b1": ((-40.0, 0.0, 0.0), 0.0)}, 300,
+         {5: (_c("b1", "velocity", 5, vel_enu_mps=(2.0, 0.0, 0.0)),)},
+         expect_status={"b1": (AF_, M_, C_)}, expect_contacts={"b1": ("COLLISION_WORLD",)}, tol={"t_crash_s": 0.5, "crash_pos_m": 0.5},
+         params={"metric": "contact_crash", "oracle": False, "plane": (0.05, 0.0)}, vehicle="otter"),
+    Case("w_speed_step_wamv", "WAM-V 16 级：0 → 1.2 m/s → 停船（VRX 阻尼系数）", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 400,
+         {5: (_c("b1", "velocity", 5, vel_enu_mps=(1.2, 0.0, 0.0)),), 250: (_c("b1", "velocity", 250, vel_enu_mps=(0.0, 0.0, 0.0)),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"rise_s": 1.0, "overshoot_pct": 10.0, "pos_rms_m": 1.0},
+         params={"metric": "velocity_step", "step_tick": 5, "v_mps": 1.2, "until_tick": 250}, vehicle="wamv"),
+    Case("w_waypoints_blueboat", "BlueBoat 级：40 m 方形航线，2 m/s", {"b1": ((0.0, 0.0, 0.0), 0.0)}, 1200,
+         {5: (_c("b1", "follow_path", 5, path_enu_m=_WSQ, speed_mps=2.0),)},
+         expect_status={"b1": (AF_, M_, AF_)}, tol={"pos_rms_m": 3.0, "arrival_s_per_100m": 3.0},
+         params={"metric": "waypoints", "start_tick": 5, "path": _WSQ.tolist()}, vehicle="blueboat"),
+)
+
+
 # ---------------------------------------------------------------------------------------------------------------- 运行
 @dataclass
 class CaseRun:
@@ -503,7 +571,15 @@ def run_l2(case: Case) -> CaseRun:
 
         def pre(k: int) -> None:
             tier.set_wind(np.tile(wind.at(k * TICK_NS), (len(case.uavs), 1)))
+    _set_current(case, tier)
     return run_case(case, tier, pre_tick=pre)
+
+
+def _set_current(case: Case, tier) -> None:
+    """Water cases: ``params["current"] = (cx, cy)`` is a uniform current (ENU, m/s) felt by every vessel for the whole case."""
+    cur = case.params.get("current")
+    if cur is not None:
+        tier.set_current(np.tile(np.asarray(cur, np.float64)[:2], (len(case.uavs), 1)))
 
 
 def run_st(case: Case) -> CaseRun:
@@ -516,7 +592,19 @@ def run_st(case: Case) -> CaseRun:
     return run_case(case, tier)
 
 
-RUNNERS = {"fast": run_fast, "l2": run_l2, "st": run_st}
+def run_fossen(case: Case) -> CaseRun:
+    """The Fossen 3-DoF oracle (`awr.phys.l2.fossen_oracle`) on the water cases: same commands and tracker, the published
+    manoeuvring equations in matrix form with RK4 instead of the engine's rigid body (no world: grounding cases are engine-only)."""
+    from awr.phys.l2.fossen_oracle import FossenOracleTier
+
+    tier = FossenOracleTier(case.uavs, dict(case.spawn), None, vehicles=dict.fromkeys(case.uavs, case.vehicle), tick_ms=TICK_MS,
+                            history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None)
+    _set_current(case, tier)
+    return run_case(case, tier)
+
+
+RUNNERS = {"fast": run_fast, "l2": run_l2, "st": run_st, "fossen": run_fossen}
+ORACLES = ("st", "fossen")
 
 
 def compose_case_sdf(case: Case, endpoint: str, *, uavs_z: Mapping[str, float] | None = None, field_wind: bool = False) -> str:
@@ -920,6 +1008,11 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         out["rest_err_m"] = float(d[-1])
         out["v_end_mps"] = float(np.linalg.norm(s[-1, 7:9]))
         out["onset_s"] = _onset(t, s, t0)
+    elif kind == "station_keep":
+        tail = t >= p["steady_from_s"]
+        out["drift_max_m"] = float(np.max(np.linalg.norm(s[:, 0:2] - s[0, 0:2], axis=1)))
+        out["offset_steady_m"] = float(np.mean(np.linalg.norm(s[tail, 0:2] - s[0, 0:2], axis=1)))
+        out["v_mean_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
     elif kind == "slope_hold":
         tail = t >= p["steady_from_s"]
         out["v_hold_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
@@ -995,9 +1088,9 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
             diffs[k] = _diff(ma.get(k), mb.get(k))
     if "overshoot_pct" in tol:
         diffs["overshoot_pct"] = _diff(ma.get("overshoot_pct"), mb.get("overshoot_pct"))
-    for k in ("drift_max_m", "rest_err_m", "z_err_m"):
+    for k in ("drift_max_m", "offset_steady_m", "rest_err_m", "z_err_m"):
         if k in tol:
-            diffs[k] = max(ma[k], mb[k])                                            # 两档各自的上界（悬停漂移、停车误差、地形跟随）
+            diffs[k] = max(ma[k], mb[k])                                            # 两档各自的上界（悬停漂移、定点偏差、停车误差、地形跟随）
     kind = case.metric
     if "arrival_s_per_100m" in tol:
         if kind == "waypoints":
@@ -1066,7 +1159,7 @@ def build_report(cases: Sequence[dict], *, sampling: dict | None = None, m25: di
 
 
 # ---------------------------------------------------------------------------------------------------------------- CLI
-SETS = {"air": CASES, "ground": GROUND_CASES}
+SETS = {"air": CASES, "ground": GROUND_CASES, "water": WATER_CASES}
 
 
 def _cases(sel: str | None, set_: str = "air") -> list[Case]:
@@ -1081,10 +1174,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m awr.phys.tier_compare")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--tier", choices=("fast", "l2", "st", "realistic"), required=True)
+    r.add_argument("--tier", choices=("fast", "l2", "st", "fossen", "realistic"), required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--cases")
-    r.add_argument("--set", default="air", choices=tuple(SETS), help="case set: air (x500, Fast / L2 / gz) or ground (L2 / ST oracle)")
+    r.add_argument("--set", default="air", choices=tuple(SETS), help="case set: air (x500, Fast / L2 / gz), ground (L2 / ST oracle) or water (L2 / Fossen oracle)")
     r.add_argument("--launcher", default="local")
     r.add_argument("--image", default="d3-gz:dev")
     m = sub.add_parser("m25")
@@ -1095,20 +1188,20 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--dz", type=float, default=0.0)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
-    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2 or l2,st")
+    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2, l2,st or l2,fossen")
     p.add_argument("--set", default="air", choices=tuple(SETS))
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if a.cmd == "run":
         for c in _cases(a.cases, a.set):
-            if a.tier == "st" and c.params.get("oracle") is False:
+            if a.tier in ORACLES and c.params.get("oracle") is False:
                 print(f"[tier_compare] {c.id} {a.tier}: engine-only case, skipped", flush=True)
                 continue
             run = RUNNERS[a.tier](c) if a.tier in RUNNERS else run_realistic(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
             run.save(out)
             print(f"[tier_compare] {c.id} {a.tier}: {run.wall_s} s", flush=True)
-        if a.set == "air" and a.tier not in ("l2", "st") and (not a.cases or REF_CASE.id in a.cases.split(",")):
+        if a.set == "air" and a.tier not in ("l2", *ORACLES) and (not a.cases or REF_CASE.id in a.cases.split(",")):
             if a.tier == "fast":
                 ref = run_fast(REF_CASE)
                 ref.save(out)
@@ -1135,8 +1228,8 @@ def main(argv: list[str] | None = None) -> int:
     cases = []
     ta, tb = (x.strip() for x in a.tiers.split(","))
     meta: dict = {"tiers": [ta, tb], "case_set": a.set}
-    if a.set == "ground":
-        meta["vehicle"] = sorted({c.vehicle for c in GROUND_CASES})
+    if a.set != "air":
+        meta["vehicle"] = sorted({c.vehicle for c in SETS[a.set]})
     skipped = []
     for c in SETS[a.set]:
         if not all((out / f"{c.id}.{t}.json").is_file() for t in (ta, tb)):

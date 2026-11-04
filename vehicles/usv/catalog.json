@@ -1,0 +1,46 @@
+{
+  "schema": "awr.device_catalog.usv.v1",
+  "catalog_version": "1.0.0",
+  "disclaimer_zh": "参数来源逐项标注：A 级来自公开代码、规格页或论文，B 级由 A 级数据推导，D 级为模拟参考值，非任何真实产品的承诺",
+  "models": [
+    {
+      "id": "otter",
+      "dir": "otter",
+      "profile_version": "1.0.0",
+      "display_name": "Otter-class twin-hull USV",
+      "display_name_zh": "双体无人艇（Maritime Robotics Otter 级）",
+      "category": "usv",
+      "size_class": "medium",
+      "reference": false,
+      "visible": true,
+      "order": 0,
+      "summary_zh": "2.0 m 双体艇，55 kg 船体 + 25 kg 载荷，双固定推进器；Fossen 三自由度参数全部取 MSS python_vehicle_simulator otter.py（A 级），是海面域模型的对拍基准"
+    },
+    {
+      "id": "blueboat",
+      "dir": "blueboat",
+      "profile_version": "1.0.0",
+      "display_name": "BlueBoat-class small USV",
+      "display_name_zh": "小型双体无人艇（BlueBoat 级）",
+      "category": "usv",
+      "size_class": "small",
+      "reference": false,
+      "visible": true,
+      "order": 1,
+      "summary_zh": "1.2 m 双体艇，14.5 kg 干重，双 M200 推进器差动转向，最高 3 m/s（规格页，A 级）；水动力与推进器系数为 D 级模拟参考值"
+    },
+    {
+      "id": "wamv",
+      "dir": "wamv",
+      "profile_version": "1.0.0",
+      "display_name": "WAM-V 16-class USV",
+      "display_name_zh": "中型双体无人艇（WAM-V 16 级）",
+      "category": "usv",
+      "size_class": "large",
+      "reference": false,
+      "visible": true,
+      "order": 2,
+      "summary_zh": "4.9 m 双体艇，180 kg，双固定推进器；质量、惯量、推进器位置与阻尼系数取 VRX 仿真模型（A 级），推力上限为插件缺省（B 级）"
+    }
+  ]
+}

@@ -21,8 +21,8 @@ and for gimbals the servo tiers ``l1`` (rate-limited) and ``l2`` (second-order s
 
 ``ladder()`` is what the device page shows; a tier is *available* only when the profile declares it and the code
 implements it (for ``l2``: when the unified engine has a domain model for the device's family). Ground vehicles come from
-their own packages (``vehicles/ground``, ``awr.vehicle.ground.v1``, read through ``awr.phys.l2.ground``); sea devices are
-listed as planned rows until their profiles and domain model land.
+their own packages (``vehicles/ground``, ``awr.vehicle.ground.v1``) and surface vessels from theirs (``vehicles/usv``,
+``awr.vehicle.usv.v1``), both read through ``awr.phys.l2.ground``; ``PLANNED`` lists device rows whose packages do not exist yet.
 """
 
 from __future__ import annotations
@@ -55,25 +55,8 @@ GZ_MODELS = {"x500": "x500_d4d", "x500_sih": "x500_d4d"}
 L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2.fixedwing", "vtol": "awr.phys.l2.fixedwing",
               "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}
 
-L2_PACKAGES = "awr.phys.l2.ground"                 # ground package loader of the engine (D3), imported by name
-PLANNED = [
-    {
-        "id": "usv_small",
-        "domain": "sea",
-        "display_name_zh": "小型无人艇（BlueBoat 级）",
-        "category": "usv",
-        "size_class": "small",
-        "note": "第 5 步：机型包 + 统一引擎 usv 域模型（Fossen 三自由度）；参考 BlueBoat",
-    },
-    {
-        "id": "usv_medium",
-        "domain": "sea",
-        "display_name_zh": "中型无人艇（NAC-USV 级）",
-        "category": "usv",
-        "size_class": "medium",
-        "note": "第 5 步：机型包 + 统一引擎 usv 域模型；参考 NAC-USV",
-    },
-]
+L2_PACKAGES = "awr.phys.l2.ground"                 # ground / sea package loader of the engine (D3), imported by name
+PLANNED: list[dict] = []                          # device rows without a package yet (none: every family on the ladder has packages)
 
 
 def _val(d):
@@ -93,14 +76,14 @@ def _domain(category, frame_type) -> str:
     return str(category or "unknown")
 
 
-def _ground_tier(tier: str, impl: dict, declared: bool) -> dict:
-    """Tier row of a ground vehicle: l0 by declaration, l2 by the unified engine's ugv domain model; the multirotor cascade
-    (l1) and the fixed-wing fast tier (fw) do not apply to a car."""
+def _ground_tier(tier: str, impl: dict, declared: bool, family: str = "ugv") -> dict:
+    """Tier row of a ground vehicle or surface vessel: l0 by declaration, l2 by the unified engine's domain model of the family;
+    the multirotor cascade (l1) and the fixed-wing fast tier (fw) do not apply to a car or a boat."""
     i = impl[tier]["implemented"]
     if tier == "l2":
-        have = bool(impl["l2"]["domains"].get("ugv")) and i
-        return {"declared": have, "implemented": i, "domain": "ugv", "engine": "unified" if have else None, "gz_model": None,
-                "status": "可用（统一引擎）" if have else "无（统一引擎尚无 ugv 模型）"}
+        have = bool(impl["l2"]["domains"].get(family)) and i
+        return {"declared": have, "implemented": i, "domain": family, "engine": "unified" if have else None, "gz_model": None,
+                "status": "可用（统一引擎）" if have else f"无（统一引擎尚无 {family} 模型）"}
     if tier == "l1":
         return {"declared": False, "implemented": i, "status": "不适用（PX4-lite 多旋翼级联）"}
     if tier == "fw":
@@ -242,6 +225,7 @@ def ladder(vdir: Path | None = None) -> dict:
             }
         )
     devices.extend(_ground_devices(vdir, impl))
+    devices.extend(_usv_devices(vdir, impl))
     devices.extend(
         {
             **p,
@@ -296,6 +280,47 @@ def _ground_devices(vdir: Path, impl: dict) -> list[dict]:
                 "fidelity_declared": sorted(declared),
                 "fidelity_default": fid.get("default"),
                 "tiers": {t: _ground_tier(t, impl, t in declared) for t in TIERS},
+                "sensors": {},
+                "summary_zh": cm.get("summary_zh", ""),
+                "source": str(path.relative_to(vdir)) if path.is_relative_to(vdir) else str(path),
+            }
+        )
+    return out
+
+
+def _usv_devices(vdir: Path, impl: dict) -> list[dict]:
+    """Rows for the surface vessel packages (``vehicles/usv``), in catalog order (loader by name, as above)."""
+    pk = importlib.import_module(L2_PACKAGES)
+    sdir = vdir / "usv"
+    cat = pk.read_family_catalog(pk.USV, sdir) if sdir.is_dir() else None
+    if cat is None:
+        return []
+    by_id = {m["id"]: m for m in cat["models"] if isinstance(m, dict)}
+    out = []
+    for pid, (doc, path) in pk.load_family_docs(pk.USV, sdir).items():
+        cm = by_id.get(pid, {})
+        fid = doc.get("fidelity") or {}
+        declared = set(fid.get("supported", []))
+        g, t, batt = doc.get("geometry") or {}, doc.get("thrusters") or {}, doc.get("battery") or {}
+        out.append(
+            {
+                "id": pid,
+                "domain": "sea",
+                "display_name": doc.get("display_name"),
+                "display_name_zh": cm.get("display_name_zh", doc.get("display_name_zh", doc.get("display_name"))),
+                "category": "usv",
+                "size_class": cm.get("size_class"),
+                "frame": (doc.get("propulsion") or {}).get("type"),
+                "mass_kg": _val(doc.get("mass_kg")),
+                "length_m": _val(g.get("length_m")),
+                "v_max_mps": _val(t.get("v_max_mps")),
+                "endurance_s": _val(batt.get("endurance_s")),
+                "capacity_wh": _val(batt.get("capacity_wh")),
+                "reference": doc.get("reference"),
+                "status": doc.get("status"),
+                "fidelity_declared": sorted(declared),
+                "fidelity_default": fid.get("default"),
+                "tiers": {tr: _ground_tier(tr, impl, tr in declared, "usv") for tr in TIERS},
                 "sensors": {},
                 "summary_zh": cm.get("summary_zh", ""),
                 "source": str(path.relative_to(vdir)) if path.is_relative_to(vdir) else str(path),

@@ -59,6 +59,30 @@ gz 没有可以搬的车模型，所以这一域集成的是车辆动力学文�
 | `osr` | JPL 开源漫游车级六轮车（四角转向，按等效自行车处理） | 速度 ~1.6 m/s C 级（项目文档）；质量、几何、轮胎 D 级模拟参考值 |
 | `podcar` | OpenPodcar 级代步车底盘载人 pod | 最高 15 km/h A 级（OpenPodcar2 摘要）；其余 D 级 |
 
+## 2c. 无人艇域模型（5c）
+
+gz 的水面支持是一组按模型逐个调参的插件（浮力、升阻力船体、推进器，VRX 的做法），不是一个艇模型，所以这一域集成的是操纵性文献的标准模型：Fossen 三自由度（纵荡、横荡、偏航）水平面模型，形式与 MSS `python_vehicle_simulator` 的 Otter 一致，再补上沙盒要的部分：
+
+| 环节 | Fossen 三自由度（MSS otter.py） | 统一引擎 usv 域 |
+|---|---|---|
+| 质量 | M = M_RB(m, x_g, I_z) + diag(X_u̇, Y_v̇, N_ṙ)，机体系 ODE | **同一刚体核**：机体系算 ν̇，a_w = R(ν̇ + r k × ν) 进 `RigidState.integrate`；z、横滚、俯仰约束到水面（三自由度） |
+| 科氏 / 向心 | C_RB(ν)ν + C_A(ν_r)ν_r，偏航 Munk 力矩置零 | 同 |
+| 阻尼 | 线性 diag(X_u, Y_v, N_r) + 偏航二次 10·N_r·\|r\|r + 横流阻力条带积分（Hoerner C_d） | 同一式，另加通用二次项 diag(X_\|u\|u, Y_\|v\|v, N_\|r\|r)（WAM-V 的 VRX 参数就是这种形式，横流项为零） |
+| 推进 | 双固定推进器 T = k_pos·n\|n\|（倒车 k_neg），轴速一阶滞后 T_n，限转速；X = T_l + T_r，N = y_t(T_r − T_l) | 同 |
+| 环境 | 流（ν_r）、风（无人艇例子里未接） | 流 `set_current`（进每一个水动力项，推进器关掉就随流漂）；风 ½ρ_air·C_dA·\|w_rel\|·w_rel |
+| 水面 / 岸 | 无 | z = water_z + 质心出水高；DSM 高于 water_z − 吃水即搁浅（COLLISION_WORLD，艇停在触底处）；网格最近点查询从质心上方 r 处发出；无世界时为深水 |
+| 停船 | 速度指数衰减，永不为零 | 静水中指令停船且 \|u\|、\|v\| < 0.05 m/s、\|r\| < 0.02 rad/s 即静止，速度精确为零（有流时不静止：随流漂或顶流保位） |
+
+参考与控制：指令集相同（velocity、goto、follow_path、orbit、hover、kill；takeoff / land 对艇返回 630；kill = 推进器关）。`WaterTracker` 把共用 M24 跟踪器的**对地**速度设定减去流速，得到艇要**对水**做出的速度与航向——于是"对地速度为零"在流里就是顶流保位；hover 是保位（偏离 0.3 m 后以 0.3·偏距 的对地速度回到保位点，保位点取"能停下的位置"= 指令位置 + 刹车距离，不掉头）；到 goto 目标 / 末航点 / 环绕终点 0.5 m 内停船，冲过了（目标在艉后一个艇长内）也停——艇不能原地掉头。控制器：速度参考按 a_max 斜坡 + 前馈 + PI（阻尼补偿、抗卷绕），航向误差 → 偏航角速度需求（K 1.0，限 r_max）→ P 偏航角速度环（阻尼补偿），分配到两轴并按轴饱和（饱和时偏航优先）；纵荡参考乘 cos(航向误差)（截 0），朝向不对先转再走。
+
+机型包同地面车一族的做法（`vehicles/usv/catalog.json` + `vehicles/usv/<id>/params.yaml`，schema `awr.vehicle.usv.v1` / `awr.device_catalog.usv.v1`；装载器 `awr.phys.l2.ground` 泛化为按族装载）。三艘：
+
+| id | 原型 | 参数等级 |
+|---|---|---|
+| `otter` | Maritime Robotics Otter 级 2 m 双体艇（55 kg + 25 kg 载荷） | 水动力与推进器参数逐项取 MSS otter.py（A 级：m、L、B、B_pont、y_pont、X_u̇ = −0.1 m、Y_v̇ = −1.5 m、k_pos / k_neg、T_n、U_max 6 kn；B 级为按其公式算出的 X_u、Y_v、N_r、N_ṙ、n_max / n_min、吃水、x_g、Hoerner C_d）；对拍基准也是它 |
+| `blueboat` | Blue Robotics BlueBoat 级 1.2 m 小艇 | 尺寸、干重、最高速 3 m/s、电池 532 Wh / 1 m/s 18 h 为规格页 A 级；水动力与推进器系数 D 级（按 Otter 比例与 3 m/s 推阻平衡定） |
+| `wamv` | WAM-V 16 级 4.9 m 双体艇（RobotX / VRX） | 质量 180 kg、I_z 446、推进器位置、线性 + 二次阻尼系数取 VRX 模型（A 级）；推力上限 250 / −100 N 为 VRX 插件缺省（B 级），其余 D 级 |
+
 ## 3. 与 Fast 对拍
 
 `python -m awr.phys.tier_compare` 的九个一致性用例（M24 §6.10 口径：起降、悬停、速度阶跃、限幅、偏航阶跃、航点、环绕、撞墙与失能坠地、恒风悬停）在 Fast 与 L2 上用**同一段驱动代码**运行，`report --tiers fast,l2`：
@@ -113,20 +137,38 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 
 直线用例几乎逐位一致（纵向两边都是 v̇ = a），差异集中在转弯（航点 0.27 m）：这是刚体 + 隐式轮胎与 ST 专用 ODE + RK4 之间的差。性能：单车约 25–35 ms / 100 ms tick（引擎与基准相当）。
 
+## 3c. 海面域：与 Fossen 三自由度基准对拍（5c）
+
+`python -m awr.phys.tier_compare run --set water --tier l2|fossen`，`report --set water --tiers l2,fossen`。基准 `awr.phys.l2.fossen_oracle` 把 Fossen 方程写成矩阵形式（M、C_RB、C_A、D 显式构造，横流条带积分，轴速滞后进 ODE），状态 (x, y, ψ, u, v, r, n_l, n_r)，机体系 RK4；**控制器与引擎共用**，档间差只来自动力学写法与积分方式。8 个可对拍用例全部通过，搁浅用例只有引擎（基准无世界）：
+
+| 用例 | 艇 | 接口 | L2 ↔ Fossen 档间差 | 容差 | 结果 |
+|---|---|---|---|---|---|
+| w_speed_step 0 → 2 m/s → 停 | otter | 一致（AFLOAT → MOVING → AFLOAT） | 上升时间 0.004 s（1.52 s）、超调 0.6 %（2.9 / 3.5 %）、位置 RMS 0.024 m | 0.5 / 10 / 1.0 | 通过 |
+| w_speed_limit 10 m/s 指令按 6 kn 限幅 | otter | 一致 | 稳态 0.034 m/s（3.05 / 3.08，上限 3.086） | 0.3 | 通过 |
+| w_goto_stop 到 (30, 15) 停船 | otter | 一致 | 到达 0.016 s（17.4 s）、停船误差 0.23 m、位置 RMS 0.02 m | 2.0 / 1.5 / 2.0 | 通过 |
+| w_waypoints 40 m 方形，2 m/s | otter | 一致 | 位置 RMS 0.015 m、到达 0.03 s/100 m | 3.0 / 3.0 | 通过 |
+| w_orbit R 10 m，1.5 m/s 一圈 | otter | 一致 | 位置 RMS 0.004 m、半径 RMS 差 0.001 m（都是 0.46）、绕圈时刻 0.00 | 3.0 / 1.0 / 3.0 | 通过 |
+| w_current_hold 0.5 m/s 流中保位 | otter | 一致（MOVING） | 两档各自：最大漂移 5.7 m（出发时艇头顺流，掉头 180° 期间被流带走）、稳态偏差 0.20 m、顶流保位对地速度 0；位置 RMS 0.008 m | 8.0 / 1.0 / 2.0 | 通过 |
+| w_speed_step_wamv 0 → 1.2 m/s → 停 | wamv | 一致 | 上升时间 0.004 s（1.89 s）、超调 0.5 %、位置 RMS 0.014 m | 1.0 / 10 / 1.0 | 通过 |
+| w_waypoints_blueboat 40 m 方形，2 m/s | blueboat | 一致 | 位置 RMS 0.14 m、到达 0.14 s/100 m | 3.0 / 3.0 | 通过 |
+| w_grounding 2 m/s 驶向 5 % 坡岸 | otter | 引擎独有 | COLLISION_WORLD（dsm）于 x = −3.90（0.05·x > −吃水 0.195 处），状态 AFLOAT → MOVING → CRASHED | — | 通过 |
+
+档间差比地面域还小（位置 RMS 厘米级）：两边都在机体系算 ν̇，差异只有积分（半隐式欧拉 vs RK4）与世界系 / 机体系的换算。性能：单艇约 25 ms / 100 ms tick，基准 35 ms。
+
 ## 4. 怎么用
 
-- Env：`spec.physics = "l2"`（与 `kinematic / fast / realistic` 并列），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，空陆可以混编在同一机队；固定翼 / VTOL / 艇仍是 630。
-- 直接用：`L2Tier(uavs, spawn, world, grounded=…, vehicles=…, ground=…)`，接口同 `FastTier`；`set_wind(n×3)` 每 tick 写风；车永远落在地面上（`grounded` 只对空中设备有意义）。
-- 状态：车新增 `VehicleStatus.MOVING`（行驶中），静止为 GROUNDED，撞上为 CRASHED；Env 的 `status.mode` 对应 `driving`。
-- 对拍：`python -m awr.phys.tier_compare run --tier l2 --out DIR`，`report --out DIR --tiers fast,l2`；地面域 `run --set ground --tier l2|st`，`report --set ground --tiers l2,st`。
-- 保真档表：`python -m awr.sim.device ladder` 的 `l2` 列按"统一引擎有没有该设备族的域模型"判定，x500 另标 `+ gz`；陆行来自 `vehicles/ground`。
+- Env：`spec.physics = "l2"`（与 `kinematic / fast / realistic` 并列），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，`vehicles/usv` 里的 id（`otter`、`blueboat`、`wamv`）走海面域，空陆海可以混编在同一机队；固定翼 / VTOL 仍是 630。
+- 直接用：`L2Tier(uavs, spawn, world, grounded=…, vehicles=…, ground=…, water_z=…)`，接口同 `FastTier`；`set_wind(n×3)` 每 tick 写风，`set_current(n×2)` 写流（只有艇感到）；车永远落在地面上，艇永远浮在 `water_z` 上（`grounded` 只对空中设备有意义）。
+- 状态：车与艇用 `VehicleStatus.MOVING`（行驶 / 航行中），静止分别为 GROUNDED / `AFLOAT`，撞上或搁浅为 CRASHED；Env 的 `status.mode` 对应 `driving` / `afloat`。
+- 对拍：`python -m awr.phys.tier_compare run --tier l2 --out DIR`，`report --out DIR --tiers fast,l2`；地面域 `run --set ground --tier l2|st`，`report --set ground --tiers l2,st`；海面域 `run --set water --tier l2|fossen`，`report --set water --tiers l2,fossen`。
+- 保真档表：`python -m awr.sim.device ladder` 的 `l2` 列按"统一引擎有没有该设备族的域模型"判定，x500 另标 `+ gz`；陆行来自 `vehicles/ground`，海来自 `vehicles/usv`。
 
 ## 5. 接下来（同一刚体、同一档位）
 
 按用户定的顺序：
 
 1. ~~地面车 `ugv`~~：5b 已做（§2b、§3b）。还没做的：差速 / 滑移转向的专用运动学（现在 `drive.type` 只是标注，六轮漫游车按等效自行车处理）、Pacejka 非线性轮胎、悬挂。
-2. **无人艇 `usv`**：Fossen 三自由度（附加质量、线性 + 二次阻尼、双推进器分配）+ 风、流；参考 BlueBoat、NAC-USV。
+2. ~~无人艇 `usv`~~：5c 已做（§2c、§3c）。还没做的：横摇 / 纵摇 / 升沉（波浪）、单舵单桨与全回转推进的分配（`propulsion.type` 现在只接受 `twin_fixed` 的动力学）、风的 A 级系数。
 3. **固定翼 `fixed_wing` / `vtol`**：升阻力矩系数表 + 推进 + 协调转弯控制，与 `awr.sim.fixedwing` 快速档对拍。
 4. numba 核（机群大时）；三个域过门后把 `physics = "realistic"` 切到统一引擎。
 5. `l3`（SITL）不在本步。
@@ -136,4 +178,5 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 - 新增 `tests/d3/phys/test_l2.py` 12 项：刚体与四元数助手、`quad_x` 布局 / 分配 / PX4 归一化权威、悬停与样本自洽、起降 / goto / 落地 / 失能坠地 / 确定性（两次 `pose_sha256` 相同）、速度与偏航阶跃、恒风倾角等于 SIH 标定值、撞墙与 IMPACT、非多旋翼拒绝、与 Fast 的接口一致（4 个用例）。
 - `tests/sensors/test_servo_ladder.py` 的保真档断言改为统一引擎口径。
 - `RefTracker` 的 `inner_pid=False` 缺省分支不变，gz 档行为不变；`Setpoint` 只加了带缺省值的字段。
+- 5c：新增 `tests/d3/phys/test_l2_usv.py` 18 项：机型包校验与装载、分配与轴限幅、基准 ODE 静止 / 定速自洽、速度阶跃精确停船与确定性（3 自由度：无横滚 / 俯仰 / 升沉）、流中保位（顶流、对地速度 0）与 kill 随流漂、搁浅与水位、空陆海混编（x500 + f1tenth + blueboat 同一档位）、环绕一圈后停、航行中 hover 不掉头、基准本身、与 Fossen 基准接口一致且容差内（8 用例）。`VehicleStatus.AFLOAT` 只有艇会报。
 - 5b：新增 `tests/d3/phys/test_l2_ugv.py` 17 项：机型包校验与装载、控制限幅、低速隐式解 = 运动学单轨、速度阶跃精确停车与确定性、坡面跟随（倾角 = atan 坡度、定速）、撞墙（mesh）与路缘（dsm）、空陆混编（x500 + f1tenth 同一档位，车拒绝 takeoff / land）、环绕、基准本身、与 ST 基准接口一致且容差内（8 用例）。`L2Tier` 重构成域分组（多旋翼代码路径不变，`test_l2.py` 12 项照旧通过）；保真档断言改为含陆行；`VehicleStatus.MOVING` 只有车会报，空中设备路径不变。
