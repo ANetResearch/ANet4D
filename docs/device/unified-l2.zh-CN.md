@@ -2,7 +2,7 @@
 
 ## 1. 为什么要自己的 L2
 
-第 4 步的保真档表里，`l2`（Realistic）只有 gz-sim 锁步一条路，且 gz 只有 `x500_d4d` 一个模型。L2 是本系统的核心档位（空、陆、海设备都要在"有惯量、有执行器、有气动/水动力"的物理里跑），只靠一个外部引擎、一个机型既不够用，也没有原创性。本步起，L2 由我们自己的引擎给出：`awr.phys.l2`，一个刚体核、一个档位类、每个设备族一个域模型；gz 保留为交叉验证（它有模型的机型上两边对拍）。
+第 4 步的保真档表里，`l2`（Realistic）只有 gz-sim 锁步一条路，且 gz 只有 `x500_d4d` 一个模型。L2 是本系统的核心档位（空、陆、海设备都要在"有惯量、有执行器、有气动/水动力"的物理里跑），只靠一个外部引擎、一个机型既不够用，也没有原创性。本步起，L2 由我们自己的引擎给出：`awr.phys.l2`，一个刚体核、一个档位类、每个设备族一个域模型。**定位（2026-11-04 定）：统一引擎就是 Realistic 档**，它是多个引擎的集成加我们的逻辑：gz 能用的部分（多旋翼转子模型、碰撞体、风阻力律、x500 参数集）作为组件吸收进来，gz 本身只做对拍基准；gz 没有的设备换别的引擎逻辑集成（车辆动力学、Fossen 艇模型、系数表固定翼），再没有的按 gz 等的逻辑自己为该设备补特异性模型；用不上的部分（如坠毁后的翻滚接触）不追求。等三个域都过门后，`physics = "realistic"` 这个名字切到统一引擎。
 
 ```
 awr.phys.l2
@@ -48,7 +48,23 @@ L1（PX4-lite，`awr.sim.fleet`）把机体压成"一个推力标量 + 理想速
 
 接口判定 = 指令回执、状态序列、接触事件种类、PoseHistory 网格、指令生效步全部相同。两档的差异只来自内环与动力学（L2 多了姿态与转子滞后，所以速度阶跃起步稍慢、上升段稍快）。曲线见在线页 `/anet4d/device/l2-multirotor/`。
 
-gz 对拍（x500）要在 dmax 的 d3-gz 容器里跑 `run --tier realistic`，然后 `report --tiers l2,realistic`；本步未跑。
+## 3a. 与 gz 对拍（x500，dmax d3-gz 容器，gz-sim 8.15）
+
+同一批运行里加上 `run --tier realistic`（launcher = local），`report --tiers l2,realistic`：
+
+| 用例 | 接口 | L2 ↔ gz 档间差 | 参照：Fast ↔ gz | 结果 |
+|---|---|---|---|---|
+| takeoff_land | 一致 | 到达 0.15 s、触地 0.004 s、触地速度 0.00、位置 RMS 0.08 m | 0.10 / 0.00 / 0.00 / 0.01 | 通过 |
+| hover | 一致 | 漂移 0.04 m（gz 侧） | 0.04 | 通过 |
+| velocity_step | 一致 | 上升时间 0.09 s（L2 0.89、gz 0.98）、超调 0.4 % | 0.08 / 0.6 % | 通过 |
+| velocity_limit | 一致 | 稳态 0.93 m/s（L2 11.94、gz 11.00；上限 12） | 0.86（Fast 11.86） | 通过 |
+| yaw_step | 一致 | t90 0.02 s | 0.10 | 通过 |
+| waypoints | 一致 | 位置 RMS 0.75 m、到达 0.17 s/100 m | 0.44 / 0.12 | 通过 |
+| orbit | 一致 | 位置 RMS 1.0 m、半径 RMS 0.014 m、到达 0.36 s/100 m | 1.1 / 0.02 / 0.37 | 通过 |
+| contact_crash | 一致 | 撞墙时刻 0.03 s、位置 0.45 m | 0.02 / 0.24 | 通过 |
+| wind_hover | 一致 | 倾角 0.00°（都是 7.85°）、位置 RMS 0.014 m | 0.00 / 0.02 | 通过 |
+
+L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz 只到 11.0 m/s：它的速度积分是 RefTracker 按 tick 折算的速度当量，顶到限幅就被反算掉，补不了阻力；L2 在引擎内按物理步跑 PX4 的 PID，到 11.94，更接近 PX4 本来的行为。运行用的镜像是 `d3-gz:dev` 加 pyzmq、jsonschema、numba、protobuf 4.25（原镜像的 protobuf 4.21 缺 `GetMessageClass`，`awr.phys.gz.protocol` 导入即失败）。
 
 ## 4. 怎么用
 
@@ -64,7 +80,7 @@ gz 对拍（x500）要在 dmax 的 d3-gz 容器里跑 `run --tier realistic`，�
 1. **地面车 `ugv`**：机型包（`kind: ugv`，schema 要加车辆字段）+ 域模型（自行车运动学 → 单轨动力学 + 线性轮胎 + 滚阻 / 坡度），参考 JPL Open Source Rover、F1TENTH、OpenPodcar；参考跟踪器要换成路径跟踪（Pure Pursuit / Stanley）。
 2. **无人艇 `usv`**：Fossen 三自由度（附加质量、线性 + 二次阻尼、双推进器分配）+ 风、流；参考 BlueBoat、NAC-USV。
 3. **固定翼 `fixed_wing` / `vtol`**：升阻力矩系数表 + 推进 + 协调转弯控制，与 `awr.sim.fixedwing` 快速档对拍。
-4. gz 交叉验证跑一次（x500），numba 核（机群大时）。
+4. numba 核（机群大时）；三个域过门后把 `physics = "realistic"` 切到统一引擎。
 5. `l3`（SITL）不在本步。
 
 ## 6. 回归
