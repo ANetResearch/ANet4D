@@ -23,7 +23,7 @@
 | 能力 | 状态 |
 |---|---|
 | 场景准入、语义、人口与身份、活动与日程、运动求解（`life_v1`、SUMO + JuPedSim）、QA 与生活审计、环境诊断、任务候选 | 可用（`tests/life` 760 通过） |
-| **场景磁带生成**：组装 `civil.assemble.build`、校验 `civil.validate_tape`，以及经它们收尾的 `civil.grounded.build`、`civil.build`、`ambient.publish` | **待补**。需要磁带 v2 记录（容器、速度与角色字段）；该记录将随场景引擎的标准化 principle 与高斯（3DGS）场景引擎一并定义，届时补齐。当前调用时抛出 `RuntimeError`，说明文字为 `awr.life.civil.assemble.SCENARIO_TAPE_PENDING` |
+| 场景磁带生成：组装 `civil.assemble.build`、校验 `civil.validate_tape`，以及经它们收尾的 `civil.grounded.build`、`civil.build`、`ambient.publish` | 可用（2026-11-04，分支 `engine/life-tape-v2`）。磁带 v2 记录（29 B：u32 容器、俯仰、横滚）已进入 `awr.sim.events.tape` 与 `packages/contracts/event/tape.v2.schema.json`；v1 磁带与写入路径不变。在文笔村环境上与 CHIMERA 的发布磁带帧数据逐字节一致（`body_sha256` 相同） |
 
 目标引擎的方向：场景引擎先规定一套标准化的场景 principle（道路网、可走面、活动范围、设施与停靠位、支撑与碰撞边界），目标引擎只依据这套 principle 生成与推进。当前代码仍经下列接入点直接读取 GLB 场景与 D3 磁带，这些接入点将在 3DGS 场景引擎完成后改为经 principle 读取：
 
@@ -79,7 +79,7 @@ PYTHONPATH=python python -m awr.life.civil.build docs/life/examples/civil-crop-c
 - 配置中 `runtime: life_v1` 选择 `awr.life.motion` 的运行时（经 `civil.grounded.build`），否则使用构建器的编译推进。
 - 阶段产物写入 `<work dir>` 并在下次构建时复用；删除对应目录即重建。
 - 输出目录已存在时拒绝覆盖（已发布的事件不可变）。
-- 最后一个阶段（写磁带与校验）为待补能力（§2），当前在 QA 之后停止并抛出带说明的 `RuntimeError`。
+- 最后一个阶段写出 `drone4d.tape.v2` 磁带并校验（§2）。
 
 ### 5.3 其他入口
 
@@ -106,7 +106,7 @@ AWR_KERNEL=numpy .venv/bin/python -m pytest -q tests/life
 ## 7. 限制与后续
 
 1. 场景输入仍是 GLB 世界包、导航栅格与 CHIMERA 产出的实测支撑文件；改为经场景 principle 读取，随 3DGS 场景引擎进行（§2）。
-2. 场景磁带生成待补（§2）。
+2. 磁带 v2 的字段（容器、俯仰、横滚）随后续 principle 与设备引擎的需要再扩展（§2）。
 3. 角色与车辆的渲染（骨骼角色、接触阴影、车辆贴片、L2 相机合成）留在 CHIMERA 的 `chimera.render`，本次只移植了人口阶段需要的外观身份与资产目录。
 4. SUMO 与 JuPedSim 后端的跨机器确定性未验证；在验证之前只用于演示与数据生成。
 5. 与 m23 `awr.sim.activities` 的协议统一（M31 `Generator`）、随机域登记（流 24 的子域）与 M18 `TargetRuntime` 的绑定待后续工作包。

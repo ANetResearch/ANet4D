@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/event/1/tape.v2.schema.json",
+  "title": "Canonical event tape header (drone4d.tape.v2)",
+  "description": "AWR-05 \u00a78.1, M23 \u00a76.7 (contracts 1.3.0, d1 V0.3). The header is stored as JCS bytes in tape.bin and hashed as stored (content_sha256 = SHA-256(header_bytes || F), F = canonical frames in tick-major order). Records are 29 B little-endian per actor per tick; container 4294967295 = none. Provenance is never part of the header (tape_manifest.v1).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "drone4d.tape.v2"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "event_version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "event_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "JCS hash of the tape input subset (M23 \u00a76.7.5)"
+    },
+    "mode": {
+      "enum": [
+        "exogenous",
+        "interactive"
+      ]
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "tick_hz": {
+      "enum": [
+        10
+      ]
+    },
+    "n_ticks": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 100,
+      "multipleOf": 100,
+      "description": "n_ticks = duration_ms / 100"
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "const": 29
+        },
+        "endian": {
+          "const": "le"
+        },
+        "fields": {
+          "const": [
+            [
+              "x_mm",
+              "i32"
+            ],
+            [
+              "y_mm",
+              "i32"
+            ],
+            [
+              "z_mm",
+              "i32"
+            ],
+            [
+              "yaw_cdeg",
+              "i16"
+            ],
+            [
+              "vx_cmps",
+              "i16"
+            ],
+            [
+              "vy_cmps",
+              "i16"
+            ],
+            [
+              "vz_cmps",
+              "i16"
+            ],
+            [
+              "state",
+              "u8"
+            ],
+            [
+              "container",
+              "u32"
+            ],
+            [
+              "pitch_cdeg",
+              "i16"
+            ],
+            [
+              "roll_cdeg",
+              "i16"
+            ]
+          ]
+        },
+        "states": {
+          "const": {
+            "0": "absent",
+            "1": "moving",
+            "2": "waiting",
+            "3": "in_vehicle",
+            "4": "inside",
+            "5": "gone"
+          }
+        },
+        "frame": {
+          "const": "world-enu"
+        }
+      },
+      "required": [
+        "bytes",
+        "endian",
+        "fields",
+        "states",
+        "frame"
+      ]
+    },
+    "codec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Descriptive; does not affect canonical frames",
+      "properties": {
+        "name": {
+          "const": "col-delta-zstd@1"
+        },
+        "block_ticks": {
+          "const": 100
+        }
+      },
+      "required": [
+        "name",
+        "block_ticks"
+      ]
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "idx": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "class": {
+            "enum": [
+              "person",
+              "vehicle",
+              "dog",
+              "machine",
+              "object",
+              "uav"
+            ]
+          },
+          "scripted": {
+            "type": "boolean"
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "NavMesh profile (person, vehicle) or null for static and 3D classes"
+          },
+          "size_mm": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "appearance": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "asset": {
+                "type": "string"
+              },
+              "tint_rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "top_rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "bottom_rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "body_rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "height_mm": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "asset_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "age": {
+                "type": "string",
+                "enum": [
+                  "adult"
+                ]
+              },
+              "top_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bottom_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "colour_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plate_text": {
+                "type": "string",
+                "pattern": "^SIM [0-9]{4}$"
+              },
+              "plate_synthetic": {
+                "const": true
+              }
+            },
+            "required": [
+              "asset"
+            ]
+          }
+        },
+        "required": [
+          "idx",
+          "id",
+          "class",
+          "scripted",
+          "profile",
+          "size_mm",
+          "appearance"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 1030,
+      "description": "Scripted actors first (idx <= 29)"
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Checked against the loaded world package (615 on mismatch)",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "content_version": {
+          "type": "string"
+        },
+        "raycast_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "navmesh_sha256": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "person": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "vehicle": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "person"
+          ]
+        },
+        "navgraph_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "anchors_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "content_version",
+        "raycast_sha256",
+        "navmesh_sha256",
+        "anchors_sha256"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "description": "Normalised keyframes (display and audit)"
+    },
+    "env_track": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "t_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "op": {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "description": "M07 operation {kind, patch?, d2?, mode, duration_s} (M23 \u00a76.11)"
+          }
+        },
+        "required": [
+          "t_ms",
+          "op"
+        ]
+      },
+      "description": "Compiled M07 operation sequence; the only authority for the environment"
+    },
+    "comms": {
+      "type": "object",
+      "description": "Normalised comms zones (times in ms)"
+    },
+    "anim": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "codec": {
+              "const": "anim-u16@1"
+            }
+          },
+          "required": [
+            "sha256",
+            "codec"
+          ]
+        }
+      ],
+      "description": "P1 animation sidecar tape.anim"
+    },
+    "realized": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base_content_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "inputlog_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "base_content_sha256",
+            "run_id",
+            "attempt",
+            "inputlog_sha256"
+          ]
+        }
+      ],
+      "description": "Interactive realised tape"
+    }
+  },
+  "required": [
+    "schema",
+    "event_id",
+    "event_version",
+    "event_sha256",
+    "mode",
+    "seed",
+    "tick_hz",
+    "n_ticks",
+    "duration_ms",
+    "record",
+    "codec",
+    "actors",
+    "world",
+    "environment",
+    "env_track",
+    "comms",
+    "anim",
+    "realized"
+  ]
+}
