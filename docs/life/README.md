@@ -24,8 +24,9 @@
 |---|---|
 | 场景准入、语义、人口与身份、活动与日程、运动求解（`life_v1`、SUMO + JuPedSim）、QA 与生活审计、环境诊断、任务候选 | 可用（`tests/life` 760 通过） |
 | 场景磁带生成：组装 `civil.assemble.build`、校验 `civil.validate_tape`，以及经它们收尾的 `civil.grounded.build`、`civil.build`、`ambient.publish` | 可用（2026-11-04，分支 `engine/life-tape-v2`）。磁带 v2 记录（29 B：u32 容器、俯仰、横滚）已进入 `awr.sim.events.tape` 与 `packages/contracts/event/tape.v2.schema.json`；v1 磁带与写入路径不变。在文笔村环境上与 CHIMERA 的发布磁带帧数据逐字节一致（`body_sha256` 相同） |
+| 场景 principle（`awr.life.principle`）：引擎的唯一场景输入，`check` 验收、`pack` 从旧输入打包、`civil.grounded --principle` 只读 principle 包 | 可用（2026-11-04，分支 `engine/principle-v1`）。规范见 `principle-v1.zh-CN.md`；文笔村打包后以 `--principle` 复跑（run v10）与 run v9 帧数据逐字节一致 |
 
-目标引擎的方向：场景引擎先规定一套标准化的场景 principle（道路网、可走面、活动范围、设施与停靠位、支撑与碰撞边界），目标引擎只依据这套 principle 生成与推进。当前代码仍经下列接入点直接读取 GLB 场景与 D3 磁带，这些接入点将在 3DGS 场景引擎完成后改为经 principle 读取：
+目标引擎只依据场景 principle（`principle-v1.zh-CN.md`：支撑栅格、语义、车道网、户外场所、世界见证）生成与推进；`civil.grounded --principle` 已经只读 principle 包。下列接入点仍存在于旧的 GLB 路径（`civil.build`、`ground="mesh"`、实测支撑构建），principle 路径不经过它们：
 
 | 接入点 | 模块 | 用途 |
 |---|---|---|
@@ -81,6 +82,16 @@ PYTHONPATH=python python -m awr.life.civil.build docs/life/examples/civil-crop-c
 - 输出目录已存在时拒绝覆盖（已发布的事件不可变）。
 - 最后一个阶段写出 `drone4d.tape.v2` 磁带并校验（§2）。
 
+`civil.grounded`（`life_v1` 运行时入口）以场景 principle 包为唯一场景输入：
+
+```sh
+PYTHONPATH=python python -m awr.life.principle pack --world <world ref> --nav <support dir> --semantics <semantics.json> --config <recipe.json> --out <principle dir>
+PYTHONPATH=python python -m awr.life.principle check <principle dir>
+PYTHONPATH=python python -m awr.life.civil.grounded --principle <principle dir> --config <recipe.json> --out <run dir>/v<N>
+```
+
+配方不再写场景文件路径；需求超出 principle 声明的能力时拒绝（`principle-v1.zh-CN.md` §5）。
+
 ### 5.3 其他入口
 
 | 命令 | 用途 |
@@ -105,7 +116,7 @@ AWR_KERNEL=numpy .venv/bin/python -m pytest -q tests/life
 
 ## 7. 限制与后续
 
-1. 场景输入仍是 GLB 世界包、导航栅格与 CHIMERA 产出的实测支撑文件；改为经场景 principle 读取，随 3DGS 场景引擎进行（§2）。
+1. `civil.grounded` 的场景输入是 principle 包（§2）；`civil.build` 与 `ambient.publish` 仍读 GLB 世界包与导航栅格，随后续工作包改为经 principle 读取。
 2. 磁带 v2 的字段（容器、俯仰、横滚）随后续 principle 与设备引擎的需要再扩展（§2）。
 3. 角色与车辆的渲染（骨骼角色、接触阴影、车辆贴片、L2 相机合成）留在 CHIMERA 的 `chimera.render`，本次只移植了人口阶段需要的外观身份与资产目录。
 4. SUMO 与 JuPedSim 后端的跨机器确定性未验证；在验证之前只用于演示与数据生成。

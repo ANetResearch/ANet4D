@@ -498,6 +498,7 @@ def build(
     config=None,
     plan_only=False,
     dynamic_validation=False,
+    principle=None,
 ):
     if not out.name.startswith("v") or not out.name[1:].isdigit():
         raise ValueError("Output version must be v followed by an integer")
@@ -506,6 +507,28 @@ def build(
     from awr.life.civil.provenance import snapshot
 
     cfg = json.loads(config.read_text()) if config else {}
+    principle_pkg = principle_report = None
+    if principle is not None:
+        # A scene principle package (awr.life.principle.v1) is the only scene input: the world reference, support
+        # grids, semantics, lane network and places all come from it, and the recipe must stay within the
+        # capabilities it declares. Legacy --world/--nav/--semantics are not accepted beside it.
+        if any(v is not None for v in (world, nav, sem_path)):
+            raise ValueError("--principle replaces --world, --nav and --semantics")
+        from awr.life.principle import admit as admit_principle
+
+        principle_pkg, principle_report = admit_principle(
+            Path(principle), cfg, people=int(cfg.get("people", people)), vehicles=int(cfg.get("vehicles", vehicles))
+        )
+        world, nav, sem_path = principle_pkg.world, principle_pkg.support, principle_pkg.semantics
+        print(
+            "principle",
+            principle_pkg.id,
+            principle_pkg.content_version[:12],
+            json.dumps(principle_report["stats"]),
+            flush=True,
+        )
+    elif any(v is None for v in (world, nav, sem_path)):
+        raise ValueError("--world, --nav and --semantics are required without --principle")
     if dynamic_validation and (plan_only or not cfg.get("environment") or cfg.get("runtime") != "life_v1"):
         raise ValueError("Dynamic validation requires an environment and life_v1 runtime, without plan-only")
     environment_binding = None
@@ -523,6 +546,8 @@ def build(
         if schema_id(manifest["schema"]) == "awr.life.life.environment.v1":
             check_declared(manifest, Demand.from_config(cfg))
     extra = [sem_path] + ([config] if config else []) + ([Path(cfg["environment"])] if cfg.get("environment") else [])
+    if principle_pkg is not None:
+        extra.append(principle_pkg.root / "principle.json")
     public_regions = None
     if cfg.get("public_regions"):
         from awr.life.civil.public_regions import load as load_public_regions
@@ -548,6 +573,12 @@ def build(
     provenance = snapshot(Path(__file__).resolve().parents[4], world, nav, extra)
     if environment_binding is not None:
         provenance["environment_binding"] = environment_binding
+    if principle_pkg is not None:
+        provenance["principle"] = {
+            "id": principle_pkg.id,
+            "content_version": principle_pkg.content_version,
+            "root": str(principle_pkg.root),
+        }
     if dynamic_validation:
         provenance["execution_mode"] = "dynamic_validation"
     # Persist before any long simulation; failed contract checks must not erase
@@ -4201,6 +4232,9 @@ def build(
             shutil.copy(work / name, pending / name)
         shutil.copy(sim / "sim_events.jsonl", pending / "activity-events.jsonl")
     shutil.copy(ROOT_ASSETS / "catalog.json", pending / "asset-catalog.json")
+    if principle_pkg is not None:
+        shutil.copy(principle_pkg.root / "principle.json", pending / "principle.json")
+        (pending / "principle-check.json").write_text(json.dumps(principle_report, indent=2, ensure_ascii=False) + "\n")
     if config:
         registry = [
             {
@@ -4246,6 +4280,8 @@ def build(
     after = snapshot(Path(__file__).resolve().parents[4], world, nav, extra)
     if dynamic_validation:
         after["execution_mode"] = "dynamic_validation"
+    if principle_pkg is not None:
+        after["principle"] = provenance["principle"]
     if environment_binding is not None:
         after["environment_binding"] = bind_inputs(
             manifest, world=world, support=nav, semantics=sem_path, config=cfg, root=cfg.get("environment_root", ".")
@@ -4279,9 +4315,14 @@ VEHICLE_PERSON_CLEARANCE_M = 0.25
 CREEP_MPS = 0.15
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--world", type=Path, required=True)
-    ap.add_argument("--nav", type=Path, required=True)
-    ap.add_argument("--semantics", type=Path, required=True)
+    ap.add_argument(
+        "--principle",
+        type=Path,
+        help="Scene principle package (awr.life.principle.v1); replaces --world/--nav/--semantics",
+    )
+    ap.add_argument("--world", type=Path)
+    ap.add_argument("--nav", type=Path)
+    ap.add_argument("--semantics", type=Path)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--duration", type=float, default=180)
     ap.add_argument("--people", type=int, default=24)
@@ -4308,4 +4349,5 @@ if __name__ == "__main__":
         a.config,
         a.plan_only,
         a.dynamic_validation,
+        principle=a.principle,
     )

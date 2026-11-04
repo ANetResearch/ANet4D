@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/life/1/principle.v1.schema.json",
+  "title": "Scene principle manifest (awr.life.principle.v1)",
+  "description": "principle.json of a scene principle package: the only scene input of the target behavior engine (awr.life). It binds by relative path and SHA-256 every layer the engine reads (support grids, town semantics, lane network, outdoor places, the world reference cited by tape headers), states for each layer how it was produced and whether a person verified it, and declares which activities the scene can carry. The scene representation itself (mesh, point cloud, Gaussians) is not part of the package.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "content_version", "frame", "layers", "capabilities", "provenance"],
+  "properties": {
+    "schema": { "const": "awr.life.principle.v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$", "description": "Scene id; equals world.json id of the world reference layer." },
+    "name": { "type": "string" },
+    "name_zh": { "type": "string" },
+    "content_version": { "$ref": "#/$defs/sha256", "description": "SHA-256 over the sorted 'layer:file:sha256' lines of every bound file." },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["units", "axes", "z_up", "bounds"],
+      "properties": {
+        "units": { "const": "m" },
+        "axes": { "const": "ENU" },
+        "z_up": { "const": true },
+        "bounds": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" }, "description": "[x0, y0, x1, y1] in metres." },
+        "georeferenced": { "type": "boolean" },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "lat": { "type": "number" }, "lon": { "type": "number" }, "alt_m": { "type": "number" }, "crs": { "type": "string" } }
+        }
+      }
+    },
+    "layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["support", "semantics", "world"],
+      "properties": {
+        "support": {
+          "allOf": [{ "$ref": "#/$defs/layer" }],
+          "type": "object",
+          "required": ["href", "schema", "files"],
+          "properties": {
+            "schema": { "const": "awr.life.support.v1" },
+            "files": {
+              "type": "object",
+              "required": ["meta.json", "ground.npy", "walk_person.npy", "walk_vehicle.npy", "z_person.npy", "z_vehicle.npy"],
+              "additionalProperties": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        },
+        "semantics": {
+          "allOf": [{ "$ref": "#/$defs/layer" }],
+          "type": "object",
+          "required": ["href", "schema", "sha256"],
+          "properties": { "schema": { "const": "awr.life.town_semantics.v1" }, "sha256": { "$ref": "#/$defs/sha256" } }
+        },
+        "lane_network": {
+          "allOf": [{ "$ref": "#/$defs/layer" }],
+          "type": "object",
+          "required": ["href", "format", "sha256"],
+          "properties": { "format": { "const": "sumo-net" }, "sha256": { "$ref": "#/$defs/sha256" } }
+        },
+        "outdoor_places": {
+          "allOf": [{ "$ref": "#/$defs/layer" }],
+          "type": "object",
+          "required": ["href", "schema", "sha256"],
+          "properties": { "schema": { "const": "awr.life.outdoor_places.v1" }, "sha256": { "$ref": "#/$defs/sha256" } }
+        },
+        "world": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["href", "content_version", "raycast_sha256"],
+          "description": "World reference the tape header cites: world.json, geometry/nav/*.json witnesses, geometry/mesh/raycast. No mesh.",
+          "properties": {
+            "href": { "type": "string" },
+            "content_version": { "type": "string", "minLength": 1 },
+            "raycast_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["walking", "driving"],
+      "properties": {
+        "walking": { "$ref": "#/$defs/capability" },
+        "vehicles_parked": { "$ref": "#/$defs/capability" },
+        "driving": { "$ref": "#/$defs/capability" },
+        "indoor": { "$ref": "#/$defs/capability" },
+        "public_transport": { "$ref": "#/$defs/capability" },
+        "cycling": { "$ref": "#/$defs/capability" },
+        "water": { "$ref": "#/$defs/capability" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/capability" }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["producer"],
+      "properties": {
+        "producer": { "type": "string" },
+        "inputs": { "type": "object" },
+        "notes": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "source": { "type": "string", "enum": ["measured", "derived", "assigned", "manual"] },
+    "layer": {
+      "type": "object",
+      "required": ["href", "source", "verified"],
+      "properties": {
+        "href": { "type": "string", "pattern": "^[^/][^\\\\]*$" },
+        "source": { "$ref": "#/$defs/source" },
+        "verified": { "type": "boolean" },
+        "method": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["supported", "unsupported", "unknown", "absent"] },
+        "reason": { "type": "string" },
+        "evidence": { "type": "string" }
+      }
+    }
+  }
+}
