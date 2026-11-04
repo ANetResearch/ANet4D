@@ -36,13 +36,11 @@ DEFAULT_ENV = {
 }
 
 
-# Pending capability (2026-11-02): scenario tape generation. The tape v2 record (container, speed and cast fields) will be
-# defined together with the standardized scenario principle of the Gaussian (3DGS) scenario engine; until then the life engine
-# runs its stages up to QA and the assembly and validation of a scenario tape raise this error. See docs/life/README.md §2.
+# The tape v2 record (u32 container, pitch and roll) lives in awr.sim.events.tape since 2026-11-04. The message below is
+# only raised when an older ANet4D without that record is on the path.
 SCENARIO_TAPE_PENDING = (
-    "Scenario tape generation is pending: it needs the tape v2 record (container, speed and cast fields), which ANet4D will "
-    "define with the standardized scenario principle of the Gaussian scenario engine (docs/life/README.md, section 2). "
-    "The stages up to QA run on the current main; awr.life.civil.assemble.build and awr.life.civil.validate_tape do not."
+    "Scenario tape generation needs the tape v2 record (RECORD_V2, NO_CONTAINER_V2) of awr.sim.events.tape and "
+    "packages/contracts/event/tape.v2.schema.json; this ANet4D checkout does not provide them (docs/life/README.md, section 2)."
 )
 
 

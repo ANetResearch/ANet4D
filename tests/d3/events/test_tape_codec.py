@@ -145,8 +145,9 @@ def test_header_and_manifest_validate_against_contracts(tape) -> None:
     d, hd, _fr, _h = tape
     ev = ROOT / "packages/contracts/event"
     th = json.loads((ev / "tape.v1.schema.json").read_text())
+    t2 = json.loads((ev / "tape.v2.schema.json").read_text())                      # 清单的 header 为 v1 或 v2
     tm = json.loads((ev / "tape_manifest.v1.schema.json").read_text())
-    reg = Registry().with_resources([(th["$id"], Resource.from_contents(th)), (tm["$id"], Resource.from_contents(tm))])
+    reg = Registry().with_resources([(s["$id"], Resource.from_contents(s)) for s in (th, t2, tm)])
     jsonschema.Draft202012Validator(th).validate(hd)
     jsonschema.Draft202012Validator(tm, registry=reg).validate(json.loads((d / "tape.json").read_text()))
 

@@ -27,10 +27,11 @@ import numpy as np
 from awr.sim.events.errors import EventError
 from awr.sim.events.jcs import jcs
 
-__all__ = ["BLOCK_TICKS", "MAGIC", "RECORD", "STATE_VISIBLE", "TICK_NS", "ActorStates", "EnvSample", "TapeReader", "fold_yaw", "manifest", "open_tape",
+__all__ = ["BLOCK_TICKS", "MAGIC", "MAGIC_V2", "NO_CONTAINER", "NO_CONTAINER_V2", "RECORD", "RECORD_V2", "STATE_VISIBLE", "TICK_NS", "ActorStates", "EnvSample", "TapeReader", "fold_yaw", "manifest", "open_tape",
            "record_spec", "write_tape"]
 
 MAGIC = b"D4DTAPE\x01"
+MAGIC_V2 = b"D4DTAPE\x02"
 TICK_NS = 100_000_000
 BLOCK_TICKS = 100
 ZSTD_LEVEL = 19
@@ -39,6 +40,9 @@ FIELDS = (("x_mm", "<i4"), ("y_mm", "<i4"), ("z_mm", "<i4"), ("yaw_cdeg", "<i2")
           ("vz_cmps", "<i2"), ("state", "u1"), ("container", "u1"))
 RECORD = np.dtype([(n, t) for n, t in FIELDS])
 assert RECORD.itemsize == 22
+FIELDS_V2 = (*FIELDS[:-1], ("container", "<u4"), ("pitch_cdeg", "<i2"), ("roll_cdeg", "<i2"))
+RECORD_V2 = np.dtype(list(FIELDS_V2))
+NO_CONTAINER_V2 = 0xFFFFFFFF
 STATES = {0: "absent", 1: "moving", 2: "waiting", 3: "in_vehicle", 4: "inside", 5: "gone"}
 STATE_VISIBLE = frozenset({1, 2})
 NO_CONTAINER = 255
@@ -51,17 +55,21 @@ def fold_yaw(cdeg: np.ndarray) -> np.ndarray:
     return ((np.asarray(cdeg, np.int64) + 18000) % 36000 - 18000).astype(np.int16)
 
 
-def record_spec() -> dict:
-    return {"bytes": 22, "endian": "le", "fields": [list(f) for f in (("x_mm", "i32"), ("y_mm", "i32"), ("z_mm", "i32"), ("yaw_cdeg", "i16"),
-                                                                       ("vx_cmps", "i16"), ("vy_cmps", "i16"), ("vz_cmps", "i16"),
-                                                                       ("state", "u8"), ("container", "u8"))],
-            "states": {str(k): v for k, v in STATES.items()}, "frame": "world-enu"}
+def record_spec(version: int = 1) -> dict:
+    if version not in (1, 2):
+        raise ValueError("unsupported tape version")
+    fields = FIELDS if version == 1 else FIELDS_V2
+    types = {"<i4":"i32", "<i2":"i16", "u1":"u8", "<u4":"u32"}
+    return {"bytes": 22 if version == 1 else 29, "endian":"le", "fields":[[n,types[t]] for n,t in fields],
+            "states":{str(k):v for k,v in STATES.items()}, "frame":"world-enu"}
+
 
 
 def _encode_sub(fr: np.ndarray) -> bytes:
     """fr (n_t, n_a) RECORD → 子块原文：字段 → 演员 → tick；块内首值绝对，其余差分（位宽内回绕）。"""
     parts = []
-    for name, t in FIELDS:
+    for name in fr.dtype.names:
+        t = fr.dtype.fields[name][0]
         a = np.ascontiguousarray(fr[name].T)                  # (n_a, n_t)
         d = a.copy()
         if a.shape[1] > 1:
@@ -70,11 +78,11 @@ def _encode_sub(fr: np.ndarray) -> bytes:
     return b"".join(parts)
 
 
-def _decode_sub(raw: bytes, n_t: int, n_a: int) -> np.ndarray:
-    out = np.zeros((n_t, n_a), RECORD)
+def _decode_sub(raw: bytes, n_t: int, n_a: int, dtype=RECORD) -> np.ndarray:
+    out = np.zeros((n_t, n_a), dtype)
     p = 0
-    for name, t in FIELDS:
-        dt = np.dtype(t)
+    for name in dtype.names:
+        dt = dtype.fields[name][0]
         ln = n_t * n_a * dt.itemsize
         d = np.frombuffer(raw, dt, count=n_t * n_a, offset=p).reshape(n_a, n_t)
         p += ln
@@ -86,8 +94,8 @@ def _decode_sub(raw: bytes, n_t: int, n_a: int) -> np.ndarray:
     return out
 
 
-def _fold(frames: np.ndarray) -> np.ndarray:
-    f = np.array(frames, RECORD, copy=True)
+def _fold(frames: np.ndarray, dtype=RECORD) -> np.ndarray:
+    f = np.array(frames, dtype, copy=True)
     f["yaw_cdeg"] = fold_yaw(f["yaw_cdeg"])
     return f
 
@@ -108,8 +116,29 @@ def write_tape(path: Path, header: dict, frames: np.ndarray, *, n_scripted: int,
     """frames (n_ticks, n_actors) RECORD。返回清单的哈希部分 {content_sha256, body_sha256, header_sha256, file_sha256, bytes}。"""
     import zstandard
 
-    frames = _fold(frames)
+    version = {"drone4d.tape.v1": 1, "drone4d.tape.v2": 2}.get(header.get("schema"))
+    if version is None:
+        raise EventError(611, "unsupported tape schema")
+    dtype, magic = (RECORD, MAGIC) if version == 1 else (RECORD_V2, MAGIC_V2)
+    if header.get("record") != record_spec(version):
+        raise EventError(611, "record layout does not match tape schema")
+    sentinel = NO_CONTAINER if version == 1 else NO_CONTAINER_V2
     n_t, n_a = frames.shape
+    if n_a > sentinel or not 0 <= n_scripted <= n_a:
+        raise EventError(611, "actor count exceeds tape format capacity; use v2")
+    containers = frames["container"].astype(np.int64)
+    if ((containers != sentinel) & ((containers < 0) | (containers >= n_a))).any():
+        raise EventError(611, "container index out of range")
+    if version == 2:
+        riding = frames["state"] == 3
+        if (riding & (containers == sentinel)).any():
+            raise EventError(611, "in_vehicle requires a container")
+        if ((~riding) & (containers != sentinel)).any():
+            raise EventError(611, "container requires in_vehicle state")
+        vehicle = np.array([a["class"] == "vehicle" for a in header["actors"]])
+        if riding.any() and not vehicle[containers[riding]].all():
+            raise EventError(611, "in_vehicle container must be a vehicle")
+    frames = _fold(frames, dtype)
     if header.get("n_ticks") != n_t or len(header.get("actors", [])) != n_a:
         raise EventError(611, "header n_ticks / actors do not match the frame array")
     hb = jcs(header)
@@ -140,7 +169,7 @@ def write_tape(path: Path, header: dict, frames: np.ndarray, *, n_scripted: int,
         blocks += [cs, cb]
         off += len(cs) + len(cb)
     body = frames.tobytes()                                     # 结构化数组按记录紧排即 tick 主序的规范帧数据
-    data = b"".join([MAGIC, struct.pack("<I", len(hb)), hb, struct.pack("<I", nb), *index, *blocks])
+    data = b"".join([magic, struct.pack("<I", len(hb)), hb, struct.pack("<I", nb), *index, *blocks])
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_bytes(data)
     return {"content_sha256": hashlib.sha256(hb + body).hexdigest(), "body_sha256": hashlib.sha256(body).hexdigest(),
@@ -156,6 +185,8 @@ class ActorStates:
     vel_enu_mps: np.ndarray
     state: np.ndarray
     container: np.ndarray
+    pitch_rad: np.ndarray | None = None
+    roll_rad: np.ndarray | None = None
 
 
 @dataclass(frozen=True)
@@ -194,13 +225,18 @@ class TapeReader:
         self.path = Path(path)
         self._buf = self.path.read_bytes()
         b = self._buf
-        if b[:8] != MAGIC:
+        if b[:8] not in (MAGIC, MAGIC_V2):
             raise EventError(620, "not a drone4d tape (magic)")
         (hl,) = struct.unpack_from("<I", b, 8)
         self.header_bytes = b[12:12 + hl]
         self.header = json.loads(self.header_bytes)
-        if self.header.get("schema") != "drone4d.tape.v1":
+        self.version = 1 if b[:8] == MAGIC else 2
+        self.record = RECORD if self.version == 1 else RECORD_V2
+        self.no_container = NO_CONTAINER if self.version == 1 else NO_CONTAINER_V2
+        if self.header.get("schema") != f"drone4d.tape.v{self.version}":
             raise EventError(620, f"unsupported tape schema {self.header.get('schema')!r}")
+        if self.header.get("record") != record_spec(self.version):
+            raise EventError(620, "record layout does not match schema")
         p = 12 + hl
         (nb,) = struct.unpack_from("<I", b, p)
         p += 4
@@ -225,7 +261,7 @@ class TapeReader:
         n_a = self.n_scripted if which == "S" else self.n_actors - self.n_scripted
         off, comp, raw = (blk.off_s, blk.comp_s, blk.raw_s) if which == "S" else (blk.off_b, blk.comp_b, blk.raw_b)
         if n_a == 0:
-            arr = np.zeros((blk.n_ticks, 0), RECORD)
+            arr = np.zeros((blk.n_ticks, 0), self.record)
         else:
             try:
                 data = zstandard.ZstdDecompressor().decompress(self._buf[off:off + comp])
@@ -233,7 +269,7 @@ class TapeReader:
                 raise EventError(614, f"block {bi} {which}: {e}") from None
             if len(data) != raw:
                 raise EventError(614, f"block {bi} {which}: raw length {len(data)} != {raw}")
-            arr = _decode_sub(data, blk.n_ticks, n_a)
+            arr = _decode_sub(data, blk.n_ticks, n_a, self.record)
         self._cache[key] = arr
         while len(self._cache) > 6:                              # 3 个块 × S、B 两个子块
             self._cache.popitem(last=False)
@@ -348,6 +384,31 @@ class TapeReader:
         bi, j = divmod(k, BLOCK_TICKS)
         return self.block_frames(bi, background=background)[j]
 
+    def motion_distance(self, t_ns: int, ids=None) -> np.ndarray:
+        """Arc length from canonical visible positions; deterministic even after seeking.
+        Hidden transitions never contribute to gait or wheel phase.
+        """
+        if not hasattr(self, '_motion_distances'):
+            d = np.zeros((self.n_ticks, self.n_actors), np.float32)
+            prev = None
+            offset = 0
+            for bi in range(len(self.blocks)):
+                f = self.block_frames(bi)
+                frames = np.concatenate([prev[None], f]) if prev is not None else f
+                p = np.stack([frames['x_mm'], frames['y_mm']],-1).astype(float)*.001
+                vis = np.isin(frames['state'], [1,2])
+                step = np.linalg.norm(np.diff(p,axis=0),axis=-1)*(vis[1:] & vis[:-1])
+                start = offset if prev is not None else 1
+                d[start:offset+len(f)] = step
+                offset += len(f)
+                prev = f[-1]
+            self._motion_distances = np.cumsum(d, axis=0)
+        k = min(max(t_ns/TICK_NS,0.),self.n_ticks-1)
+        lo = int(k)
+        hi = min(lo + 1, self.n_ticks - 1)
+        d = self._motion_distances[lo]*(1-(k-lo))+self._motion_distances[hi]*(k-lo)
+        return d if ids is None else d[ids]
+
     def actor_states(self, t_ns: int, ids=None) -> ActorStates:
         """M23 §6.8：k = ⌊t / 100 ms⌋；可见性类别或容器变化时取阶跃（用第 k 帧），移动与等待之间以带速度的 Hermite 插值，
         yaw 走最短弧；t 超过末帧保持末帧；t < 0 返回第 0 帧且 state = 0。仅请求脚本演员时不解 B 子块。"""
@@ -380,6 +441,9 @@ class TapeReader:
             y0 = r0["yaw_cdeg"][m].astype(np.float64)
             dy = (r1["yaw_cdeg"][m].astype(np.float64) - y0 + 18000.0) % 36000.0 - 18000.0
             st.yaw_rad[m] = np.radians((y0 + dy * (rem / TICK_NS)) / 100.0)
+            for field in ('pitch_rad','roll_rad'):
+                if getattr(st,field) is not None:
+                    getattr(st,field)[m] = getattr(a,field)*(1-rem/TICK_NS)+getattr(b,field)*(rem/TICK_NS)
         return st
 
 
@@ -392,7 +456,9 @@ def _unpack(sel: np.ndarray, r: np.ndarray) -> ActorStates:
     pos = np.stack([r["x_mm"], r["y_mm"], r["z_mm"]], 1).astype(np.float64) / 1000.0
     vel = np.stack([r["vx_cmps"], r["vy_cmps"], r["vz_cmps"]], 1).astype(np.float64) / 100.0
     vel[~vis] = 0.0
-    return ActorStates(np.asarray(sel), pos, np.radians(r["yaw_cdeg"].astype(np.float64) / 100.0), vel, r["state"].copy(), r["container"].copy())
+    return ActorStates(np.asarray(sel), pos, np.radians(r["yaw_cdeg"].astype(np.float64) / 100.0), vel, r["state"].copy(), r["container"].copy(),
+                       np.radians(r["pitch_cdeg"]*.01) if "pitch_cdeg" in r.dtype.names else np.zeros(len(r)),
+                       np.radians(r["roll_cdeg"]*.01) if "roll_cdeg" in r.dtype.names else np.zeros(len(r)))
 
 
 def manifest(hashes: dict, header: dict, *, provenance: dict, report: dict | None = None) -> dict:

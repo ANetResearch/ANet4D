@@ -949,6 +949,16 @@ __all__ = [
     "TapeV1Record",
     "TapeV1World",
     "TapeV1WorldNavmeshSha256",
+    "TapeV2",
+    "TapeV2Actors",
+    "TapeV2ActorsAppearance",
+    "TapeV2AnimOneOf1",
+    "TapeV2Codec",
+    "TapeV2EnvTrack",
+    "TapeV2RealizedOneOf1",
+    "TapeV2Record",
+    "TapeV2World",
+    "TapeV2WorldNavmeshSha256",
     "Target",
     "TargetActivity",
     "TargetAppearance",
@@ -9584,7 +9594,7 @@ class TapeManifestV1(TypedDict):
     bytes: int
     n_actors: int
     n_ticks: int
-    header: TapeV1
+    header: TapeV1 | TapeV2
     provenance: TapeManifestV1Provenance
     report: TapeManifestV1Report
 
@@ -9714,6 +9724,96 @@ class TapeV1World(TypedDict):
 
 # event/tape.v1.schema.json#/properties/world/properties/navmesh_sha256
 class TapeV1WorldNavmeshSha256(TypedDict):
+    person: str
+    vehicle: NotRequired[str]
+
+
+# event/tape.v2.schema.json# Canonical event tape header (drone4d.tape.v2)
+class TapeV2(TypedDict):
+    schema: Literal["drone4d.tape.v2"]
+    event_id: str
+    event_version: int
+    event_sha256: str
+    mode: Literal["exogenous", "interactive"]
+    seed: int
+    tick_hz: Literal[10]
+    n_ticks: int
+    duration_ms: int
+    record: TapeV2Record
+    codec: TapeV2Codec
+    actors: list[TapeV2Actors]
+    world: TapeV2World
+    environment: dict[str, Any]
+    env_track: list[TapeV2EnvTrack]
+    comms: dict[str, Any]
+    anim: TapeV2AnimOneOf1 | None
+    realized: TapeV2RealizedOneOf1 | None
+
+
+# event/tape.v2.schema.json#/properties/actors/items/properties/appearance
+class TapeV2ActorsAppearance(TypedDict):
+    asset: str
+    tint_rgb: NotRequired[list[int]]
+    top_rgb: NotRequired[list[int]]
+    bottom_rgb: NotRequired[list[int]]
+    body_rgb: NotRequired[list[int]]
+    height_mm: NotRequired[int]
+    asset_sha256: NotRequired[str]
+    age: NotRequired[Literal["adult"]]
+    top_name: NotRequired[str]
+    bottom_name: NotRequired[str]
+    colour_name: NotRequired[str]
+    plate_text: NotRequired[str]
+    plate_synthetic: NotRequired[Literal[True]]
+
+
+# event/tape.v2.schema.json#/properties/anim/oneOf/1
+class TapeV2AnimOneOf1(TypedDict):
+    sha256: str
+    codec: Literal["anim-u16@1"]
+
+
+# event/tape.v2.schema.json#/properties/codec
+class TapeV2Codec(TypedDict):
+    name: Literal["col-delta-zstd@1"]
+    block_ticks: Literal[100]
+
+
+# event/tape.v2.schema.json#/properties/env_track/items
+class TapeV2EnvTrack(TypedDict):
+    t_ms: int
+    op: dict[str, Any]
+
+
+# event/tape.v2.schema.json#/properties/realized/oneOf/1
+class TapeV2RealizedOneOf1(TypedDict):
+    base_content_sha256: str
+    run_id: str
+    attempt: int
+    inputlog_sha256: str
+
+
+# event/tape.v2.schema.json#/properties/record
+class TapeV2Record(TypedDict):
+    bytes: Literal[29]
+    endian: Literal["le"]
+    fields: Any
+    states: Any
+    frame: Literal["world-enu"]
+
+
+# event/tape.v2.schema.json#/properties/world
+class TapeV2World(TypedDict):
+    id: str
+    content_version: str
+    raycast_sha256: str
+    navmesh_sha256: TapeV2WorldNavmeshSha256
+    navgraph_sha256: NotRequired[str]
+    anchors_sha256: str
+
+
+# event/tape.v2.schema.json#/properties/world/properties/navmesh_sha256
+class TapeV2WorldNavmeshSha256(TypedDict):
     person: str
     vehicle: NotRequired[str]
 
@@ -12646,6 +12746,18 @@ TapeV1Actors = TypedDict("TapeV1Actors", {
     "profile": str | None,
     "size_mm": list[int],
     "appearance": TapeV1ActorsAppearance,
+})
+
+
+# event/tape.v2.schema.json#/properties/actors/items
+TapeV2Actors = TypedDict("TapeV2Actors", {
+    "idx": int,
+    "id": str,
+    "class": Literal["person", "vehicle", "dog", "machine", "object", "uav"],
+    "scripted": bool,
+    "profile": str | None,
+    "size_mm": list[int],
+    "appearance": TapeV2ActorsAppearance,
 })
 
 

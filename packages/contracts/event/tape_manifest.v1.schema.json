@@ -39,7 +39,10 @@
       "minimum": 0
     },
     "header": {
-      "$ref": "tape.v1.schema.json"
+      "oneOf": [
+        { "$ref": "tape.v1.schema.json" },
+        { "$ref": "tape.v2.schema.json" }
+      ]
     },
     "provenance": {
       "type": "object",
