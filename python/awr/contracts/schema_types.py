@@ -218,6 +218,12 @@ __all__ = [
     "Effect",
     "EffectArtifacts",
     "Engine",
+    "EntityClassesV1",
+    "EntityClassesV1Class",
+    "EntityClassesV1ClassBody",
+    "EntityClassesV1ClassMotion",
+    "EntityClassesV1Spread",
+    "EntityClassesV1SpreadOneOf1",
     "Enums",
     "EnvState",
     "EnvStateAcousticBg",
@@ -1315,6 +1321,10 @@ type CommandsCategory = Literal["nav", "nav_setup", "nav_stream", "safety", "saf
 
 # recon/engine.schema.json# Recon engine.json
 type Engine = ReconIrEngine
+
+
+# life/entity_classes.v1.schema.json#/$defs/spread
+type EntityClassesV1Spread = float | EntityClassesV1SpreadOneOf1
 
 
 # env/env_world_defaults.schema.json# env_world_defaults.json
@@ -3278,6 +3288,47 @@ class EffectArtifacts(TypedDict):
     size_bytes: int
     content_cid: NotRequired[str]
     media_type: NotRequired[str]
+
+
+# life/entity_classes.v1.schema.json# Entity class catalog (awr.life.entity_classes.v1)
+class EntityClassesV1(TypedDict):
+    schema: Literal["awr.life.entity_classes.v1"]
+    note: NotRequired[str]
+    classes: dict[str, EntityClassesV1Class]
+
+
+# life/entity_classes.v1.schema.json#/$defs/class
+class EntityClassesV1Class(TypedDict):
+    label_zh: NotRequired[str]
+    tape_class: Literal["person", "vehicle", "dog", "machine", "object", "uav"]
+    profile: Literal["person", "vehicle"] | None
+    body: EntityClassesV1ClassBody
+    motion: NotRequired[EntityClassesV1ClassMotion]
+    role: NotRequired[str]
+    activities: NotRequired[list[str]]
+    min_activity_kinds: NotRequired[int]
+    id_prefix: NotRequired[str]
+    semantic_type: NotRequired[str]
+    description: NotRequired[str]
+
+
+# life/entity_classes.v1.schema.json#/$defs/class/properties/body
+class EntityClassesV1ClassBody(TypedDict):
+    kind: Literal["articulated", "rigid", "static"]
+    assets: Literal["humans", "vehicles", "street"] | list[str]
+    height_m: NotRequired[EntityClassesV1Spread]
+
+
+# life/entity_classes.v1.schema.json#/$defs/class/properties/motion
+class EntityClassesV1ClassMotion(TypedDict):
+    max_speed_mps: NotRequired[EntityClassesV1Spread]
+
+
+# life/entity_classes.v1.schema.json#/$defs/spread/oneOf/1
+class EntityClassesV1SpreadOneOf1(TypedDict):
+    base: float
+    step: NotRequired[float]
+    cycle: NotRequired[int]
 
 
 # rt/enums.schema.json# enums.json meta-schema

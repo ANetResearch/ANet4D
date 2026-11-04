@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/life/1/entity_classes.v1.schema.json",
+  "title": "Entity class catalog (awr.life.entity_classes.v1)",
+  "description": "Classes of targets the target behavior engine admits and moves: tape class and navigation profile, body (articulated walker, rigid vehicle, static object) and its assets, height and speed spreads over the member index, the role for the activity director and the purposes the class may take. The same objects appear inline in a recipe under `classes`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "classes"],
+  "properties": {
+    "schema": { "const": "awr.life.entity_classes.v1" },
+    "note": { "type": "string" },
+    "classes": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+      "additionalProperties": { "$ref": "#/$defs/class" }
+    }
+  },
+  "$defs": {
+    "spread": {
+      "oneOf": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["base"],
+          "properties": {
+            "base": { "type": "number", "exclusiveMinimum": 0 },
+            "step": { "type": "number" },
+            "cycle": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "class": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tape_class", "profile", "body"],
+      "properties": {
+        "label_zh": { "type": "string" },
+        "tape_class": { "enum": ["person", "vehicle", "dog", "machine", "object", "uav"] },
+        "profile": { "enum": ["person", "vehicle", null] },
+        "body": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "assets"],
+          "properties": {
+            "kind": { "enum": ["articulated", "rigid", "static"] },
+            "assets": {
+              "oneOf": [
+                { "enum": ["humans", "vehicles", "street"] },
+                { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+              ]
+            },
+            "height_m": { "$ref": "#/$defs/spread" }
+          }
+        },
+        "motion": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "max_speed_mps": { "$ref": "#/$defs/spread" } }
+        },
+        "role": { "type": "string", "minLength": 1 },
+        "activities": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "min_activity_kinds": { "type": "integer", "minimum": 1 },
+        "id_prefix": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "semantic_type": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

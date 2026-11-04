@@ -25,6 +25,7 @@
 | 场景准入、语义、人口与身份、活动与日程、运动求解（`life_v1`、SUMO + JuPedSim）、QA 与生活审计、环境诊断、任务候选 | 可用（`tests/life` 760 通过） |
 | 场景磁带生成：组装 `civil.assemble.build`、校验 `civil.validate_tape`，以及经它们收尾的 `civil.grounded.build`、`civil.build`、`ambient.publish` | 可用（2026-11-04，分支 `engine/life-tape-v2`）。磁带 v2 记录（29 B：u32 容器、俯仰、横滚）已进入 `awr.sim.events.tape` 与 `packages/contracts/event/tape.v2.schema.json`；v1 磁带与写入路径不变。在文笔村环境上与 CHIMERA 的发布磁带帧数据逐字节一致（`body_sha256` 相同） |
 | 场景 principle（`awr.life.principle`）：引擎的唯一场景输入，`check` 验收、`pack` 从旧输入打包、`civil.grounded --principle` 只读 principle 包 | 可用（2026-11-04，分支 `engine/principle-v1`）。规范见 `principle-v1.zh-CN.md`；文笔村打包后以 `--principle` 复跑（run v10）与 run v9 帧数据逐字节一致 |
+| 三个扩展点：实体类别（`awr.life.classes`，目录 `classes/default.json`，配方 `classes`/`population`）、活动配方（`life.activity_engine.activities`/`additional_activities`，含 `roles`）、运动后端登记（`awr.life.runtimes`，配方 `runtime`/`runtimes`） | 可用（2026-11-04，分支 `engine/extension-points`）。说明见 `extension-points.zh-CN.md`；文笔村只改配方加了一类跑步者（run v12），不加类别的复跑（run v11）与 v10 帧数据逐字节一致 |
 
 目标引擎只依据场景 principle（`principle-v1.zh-CN.md`：支撑栅格、语义、车道网、户外场所、世界见证）生成与推进；`civil.grounded --principle` 已经只读 principle 包。下列接入点仍存在于旧的 GLB 路径（`civil.build`、`ground="mesh"`、实测支撑构建），principle 路径不经过它们：
 
@@ -90,7 +91,7 @@ PYTHONPATH=python python -m awr.life.principle check <principle dir>
 PYTHONPATH=python python -m awr.life.civil.grounded --principle <principle dir> --config <recipe.json> --out <run dir>/v<N>
 ```
 
-配方不再写场景文件路径；需求超出 principle 声明的能力时拒绝（`principle-v1.zh-CN.md` §5）。
+配方不再写场景文件路径；需求超出 principle 声明的能力时拒绝（`principle-v1.zh-CN.md` §5）。配方里的目标类别、活动配方与运动后端见 `extension-points.zh-CN.md`（`python -m awr.life.classes check 配方.json` 打印解析后的类别与人口）。
 
 ### 5.3 其他入口
 

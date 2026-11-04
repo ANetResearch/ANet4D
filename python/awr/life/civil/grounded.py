@@ -611,6 +611,15 @@ def build(
     t_start = -round(warm / DT) * DT
     life_meta = {"persons": {}, "vehicle_chains": [], "resident_parked": []}
     human_count = int(cfg.get("human_assets", 4))
+    # Entity classes (awr.life.classes): what each kind of walker is to the engine. The built-in catalog reproduces the
+    # legacy formulas; a recipe adds classes under `classes` and asks for members under `population`.
+    from awr.life.classes import load as load_entity_classes
+    from awr.life.classes import population as class_population
+
+    entity_classes = load_entity_classes(cfg)
+    person_classes = class_population(cfg, people, entity_classes)
+    person_members = [(ec, j) for ec, n_ in person_classes for j in range(n_)]
+    people = len(person_members)
     props = int(cfg.get("props", 0))
     surface = SurfaceMap(nav)
     sem = json.loads(sem_path.read_text())
@@ -634,10 +643,10 @@ def build(
         max_radius = 0.0
         half_width = 0.0
         person_sizes = []
-        for j in range(people):
-            spec, mesh, _ = load("human-" + str(j % human_count + 1))
+        for ec, j in person_members:
+            spec, mesh, _ = load(ec.asset(j))
             envelope = np.maximum(np.max(np.abs(mesh["poses"]), axis=(0, 1)), np.max(np.abs(mesh["p"]), axis=0))
-            wh = 2 * envelope[:2] * (1.60 + 0.04 * (j % 6)) / spec["dimensions_m"][2] + 0.04
+            wh = 2 * envelope[:2] * ec.height(j) / spec["dimensions_m"][2] + 0.04
             max_radius = max(max_radius, float(np.linalg.norm(wh) / 2))
             half_width = max(half_width, float(wh[1] / 2))
             person_sizes.append(wh)
@@ -649,10 +658,7 @@ def build(
             # at rest, drawn in the rest pose: the turning disk is that of the rest
             # pose, required where people rotate (sharp corners, standing points,
             # refuges: walking.turn_free).
-            ext_all = [
-                bodies.person_extents("human-" + str(j % human_count + 1), round(1.60 + 0.04 * (j % 6), 3))
-                for j in range(people)
-            ]
+            ext_all = [bodies.person_extents(ec.asset(j), round(ec.height(j), 3)) for ec, j in person_members]
             half_width = max(float(np.abs(e[1, 2:]).max()) for e in ext_all)
             max_radius = max(float(bodies.turn_radius(e[0])) for e in ext_all)
             person_sizes = [bodies.symmetric(e[0]) for e in ext_all]
@@ -1590,7 +1596,10 @@ def build(
         usage[("vehicle", rr["road"])] = usage.get(("vehicle", rr["road"]), 0) + 1
         return idx
 
-    for kind, count in [("vehicle", vehicles), ("person", people)]:
+    for kind, count, ec in [
+        ("vehicle", vehicles, entity_classes["local_traffic"]),
+        *[("person", n_, c_) for c_, n_ in person_classes],
+    ]:
         if life and kind == "vehicle":
             plan_life_vehicles(count)
             if overlay is not None:
@@ -1616,12 +1625,13 @@ def build(
         for j in range(count):
             if j % 10 == 0:
                 print("planning", kind, j, count, "admitted", len(actors), flush=True)
-            key = vehicle_keys[j % len(vehicle_keys)] if kind == "vehicle" else "human-" + str(j % human_count + 1)
+            key = vehicle_keys[j % len(vehicle_keys)] if kind == "vehicle" else ec.asset(j)
+            pid = ec.actor_id(j) if kind == "person" else f"{kind}-{j:03d}"
             spec, mesh, _ = load(key)
             if kind == "vehicle":
                 size = np.array(spec["dimensions_m"])
             else:
-                height = 1.60 + 0.04 * (j % 6)
+                height = ec.height(j)
                 envelope = np.maximum(np.max(np.abs(mesh["poses"]), axis=(0, 1)), np.max(np.abs(mesh["p"]), axis=0))
                 size = np.r_[2 * envelope[:2] * height / spec["dimensions_m"][2] + 0.04, height]
             cache_key = (kind, tuple(size))
@@ -1631,9 +1641,9 @@ def build(
                 if life:
                     if activity_runtime is not None:
                         departure = t_start
-                        entry = overlay.person(j) if overlay is not None else None
+                        entry = overlay.person(j) if overlay is not None and ec.id == "resident" else None
                         rr, agenda, meta = activity_runtime.place_person(
-                            f"person-{j:03d}",
+                            pid,
                             positions,
                             sizes,
                             yaws,
@@ -1641,7 +1651,9 @@ def build(
                             t_start,
                             region=entry["polygon"] if entry else None,
                             places_region=entry["places_polygon"] if entry and entry["places"] == "region" else None,
-                            min_kinds=entry["min_activity_kinds"] if entry else None,
+                            min_kinds=entry["min_activity_kinds"] if entry else ec.min_activity_kinds,
+                            role=ec.role,
+                            only_purposes=ec.activities,
                         )
                         if entry and rr is None:
                             raise ValueError(
@@ -1649,8 +1661,12 @@ def build(
                             )
                         if entry and meta:
                             meta["overlay"] = entry["key"]
-                    elif overlay is not None and overlay.person(j) is not None:
+                    elif overlay is not None and ec.id == "resident" and overlay.person(j) is not None:
                         raise ValueError("Scenario overlay persons need the activity runtime")
+                    elif ec.id != "resident":
+                        raise ValueError(
+                            f"Entity class {ec.id} needs the activity runtime (life.behavior = activities_v1)"
+                        )
                     else:
                         from awr.life.civil.itineraries import plan_daily_life
 
@@ -1659,7 +1675,7 @@ def build(
                             walking,
                             pools,
                             rng,
-                            f"person-{j:03d}",
+                            pid,
                             positions,
                             sizes,
                             yaws,
@@ -1670,7 +1686,7 @@ def build(
                             life,
                         )
                     if meta:
-                        life_meta["persons"][f"person-{j:03d}"] = meta
+                        life_meta["persons"][pid] = meta
                 elif places is not None:
                     from awr.life.civil.itineraries import plan_outdoor_visits
 
@@ -1678,7 +1694,7 @@ def build(
                         walking,
                         places,
                         rng,
-                        f"person-{j:03d}",
+                        pid,
                         positions,
                         sizes,
                         yaws,
@@ -1757,24 +1773,26 @@ def build(
             usage[(kind, rr["road"])] = usage.get((kind, rr["road"]), 0) + 1
             actor = {
                 "idx": idx,
-                "id": f"{kind}-{j:03d}",
+                "id": pid,
                 "class": kind,
                 "scripted": True,
                 "profile": kind,
                 "size_mm": list(np.round(size * 1000).astype(int)),
                 "appearance": {"asset": key + "@1", "asset_sha256": spec["npz_sha256"]},
-                "role": "resident" if kind == "person" else "local_traffic",
+                "role": ec.role,
                 "vtype": key if kind == "vehicle" else "",
-                "semantic_type": key if kind == "vehicle" else "pedestrian",
+                "semantic_type": key if kind == "vehicle" else (ec.semantic_type or "pedestrian"),
                 "description": key,
             }
             if cfg.get("visual_identity"):
                 from awr.life.appearance.identity import clothing, plate_text
 
                 if kind == "person":
-                    actor["appearance"].update(clothing(overlay.outfit(j, j) if overlay is not None else j))
+                    actor["appearance"].update(
+                        clothing(overlay.outfit(j, j) if overlay is not None and ec.id == "resident" else j)
+                    )
                     actor["description"] = (
-                        f"成年人，{actor['appearance']['top_name']}上衣、{actor['appearance']['bottom_name']}裤子"
+                        f"{ec.description or '成年人'}，{actor['appearance']['top_name']}上衣、{actor['appearance']['bottom_name']}裤子"
                     )
                 else:
                     from awr.life.civil.population import CAR_COLOURS, VEHICLE_TYPES
@@ -1800,7 +1818,7 @@ def build(
                     "kind": kind,
                     "status": "waiting",
                     "goal_s": route_length(rr),
-                    "max_speed": (3.0 + 0.2 * (j % 4)) if kind == "vehicle" else (1.0 + 0.08 * (j % 4)),
+                    "max_speed": ec.max_speed(j),
                     "stuck_s": 0.0,
                     "replan_after": t_start,
                     "agenda": agenda,
@@ -2720,13 +2738,12 @@ def build(
     warm_prev_skip = np.zeros(n, bool)
     simulation_began = time.perf_counter()
     life_ctx = None
-    if cfg.get("runtime") not in (None, "grounded_v1", "life_v1"):
-        raise ValueError("Unknown runtime")
-    if cfg.get("runtime") == "life_v1":
-        # The compiled crowd runtime (awr.life.motion) advances the admitted world; the
-        # loop below is skipped. Assembly, final QA, life audit and publishing follow.
-        from awr.life.motion.runtime import run as run_life
+    from awr.life.runtimes import resolve as resolve_runtime
 
+    runtime_name, run_life = resolve_runtime(cfg)
+    if run_life is not None:
+        # A registered motion backend (awr.life.runtimes; life_v1 is awr.life.motion.runtime) advances the admitted
+        # world; the loop below is skipped. Assembly, final QA, life audit and publishing follow.
         life_ctx = dict(
             cfg=cfg,
             jobs=jobs,

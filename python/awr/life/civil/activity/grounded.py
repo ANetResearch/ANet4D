@@ -183,6 +183,18 @@ class GroundedActivities:
                     tour=True,
                 )
             )
+        # Declarative recipes (awr.life.civil.activity.recipes, the engine's second extension point): `activities`
+        # replaces the facility defaults above, `additional_activities` extends them (classes other than residents
+        # take their purposes from here through the `roles` field).
+        from .recipes import load_activities
+
+        available = tuple("car" if m == "drive" else m for m in self.modes)
+        if self.cfg.get("activities") is not None:
+            rules = [a for a in rules if a.purpose == "drive_around"] + load_activities(
+                self.cfg["activities"], available
+            )
+        if self.cfg.get("additional_activities") is not None:
+            rules += load_activities(self.cfg["additional_activities"], available, existing={a.purpose for a in rules})
         speeds = {"walk": float(life.get("planning_speed_mps", 1.05))}
         if "drive" in self.modes:
             speeds["drive"] = float(life["driving"].get("planning_speed_mps", 6.0))
@@ -392,7 +404,18 @@ class GroundedActivities:
         return self.route_cache[key]
 
     def place_person(
-        self, actor, positions, sizes, yaws, radius, start, region=None, places_region=None, min_kinds=None
+        self,
+        actor,
+        positions,
+        sizes,
+        yaws,
+        radius,
+        start,
+        region=None,
+        places_region=None,
+        min_kinds=None,
+        role="resident",
+        only_purposes=None,
     ):
         """Only place a home body and prove activity access; do not prewrite a day.
 
@@ -401,7 +424,10 @@ class GroundedActivities:
         outside the region whenever it walks (cq3p-d8-s3 v4, T2 target person-003 32.6 m outside its region at task
         start); `places_region` (a polygon) restricts the resident's destinations to the activity places in it, and
         its activity access is proved on those alone; `min_kinds` replaces min_activity_kinds for this resident
-        (recorded in `kind_minimum`)."""
+        (recorded in `kind_minimum`); `role` is the actor's role for the director (its entity class), `only_purposes` an
+        optional list restricting which of the role's activities it takes."""
+        if not any(role in a.roles for a in self.director.activities):
+            raise ValueError(f"No activity recipe names the role {role!r}; add one under life.activity_engine")
         free = self.network.obstacle_mask(positions, sizes, radius, yaws, min_separation=3.0)
         candidates = list(self.pools["street"])
         allowed = None
@@ -460,7 +486,7 @@ class GroundedActivities:
                         for p in self.director.places.values()
                         if p.kind != "home"
                         and (allowed is None or p.id in allowed)
-                        and any(supports_activity(p, a) for a in self.director.activities)
+                        and any(supports_activity(p, a) for a in self.director.activities if role in a.roles)
                         and lo <= math.dist(xy, p.xy) <= hi
                         and self.route_possible(tuple(xy), p.xy)
                     ),
@@ -506,11 +532,13 @@ class GroundedActivities:
             purposes = tuple(
                 a.purpose
                 for a in self.director.activities
-                if "resident" in a.roles and any(k in witnesses for k in a.kinds)
+                if role in a.roles
+                and any(k in witnesses for k in a.kinds)
+                and (only_purposes is None or a.purpose in only_purposes)
             )
             site = Place(actor + "-home", tuple(xy), "home", (actor + "-home",))
             self.director.places[site.id] = site
-            self.director.add_actor(Actor(actor, site.id, activities=purposes, places=allowed), t=start)
+            self.director.add_actor(Actor(actor, site.id, role=role, activities=purposes, places=allowed), t=start)
             if min_kinds is not None:
                 self.kind_minimum[actor] = int(min_kinds)
             # Initial state is a sampled ongoing outdoor home activity, not a

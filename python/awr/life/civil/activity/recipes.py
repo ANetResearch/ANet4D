@@ -5,7 +5,7 @@ import math
 from .director import Activity
 
 
-def load_activities(rows, available_modes):
+def load_activities(rows, available_modes, existing=()):
     """Load the grounded adapter's optional activity_engine.activities list.
 
     These replace the legacy facility-purpose defaults. Capabilities come from
@@ -15,8 +15,8 @@ def load_activities(rows, available_modes):
     if not isinstance(rows, list) or not rows:
         raise ValueError("activities must be a nonempty list")
     required = {"purpose", "kinds", "dwell_s", "recurrence_s", "requires"}
-    optional = {"weight", "modes", "readiness", "tour"}
-    result, purposes = [], set()
+    optional = {"weight", "modes", "readiness", "tour", "roles"}
+    result, purposes = [], set(existing)
 
     def names(value, field):
         if (
@@ -45,6 +45,7 @@ def load_activities(rows, available_modes):
             raise ValueError("Home and berth are engine resources, not recipe destinations")
         requires = names(row["requires"], "requires")
         modes = names(row.get("modes", ["walk"]), "modes")
+        roles = names(row.get("roles", ["resident"]), "roles")
         if not set(modes) <= set(available_modes):
             raise ValueError("Activity modes require an available scene backend")
         dwell = row["dwell_s"]
@@ -71,6 +72,7 @@ def load_activities(rows, available_modes):
                 dwell,
                 recurrence,
                 weight=weight,
+                roles=roles,
                 modes=modes,
                 readiness=readiness,
                 requires=requires,
