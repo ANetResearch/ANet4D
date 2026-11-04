@@ -4280,6 +4280,8 @@ def build(
     after = snapshot(Path(__file__).resolve().parents[4], world, nav, extra)
     if dynamic_validation:
         after["execution_mode"] = "dynamic_validation"
+    if principle_pkg is not None:
+        after["principle"] = provenance["principle"]
     if environment_binding is not None:
         after["environment_binding"] = bind_inputs(
             manifest, world=world, support=nav, semantics=sem_path, config=cfg, root=cfg.get("environment_root", ".")
