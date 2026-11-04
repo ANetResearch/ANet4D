@@ -13,11 +13,11 @@
 |---|---|---|---|
 | `l0` | 回放 / 运动学：位姿来自记录或运动提供者，无动力学 | `Fidelity.L0`，stage `kinematic` | 可用 |
 | `l1` | PX4-lite 级联，125 Hz：位置环 → 姿态环 → 电机 → 气动 → 积分 | `Fidelity.L1`，stage `l1`（numba 融合核与 numpy oracle 对拍） | 可用 |
-| `l2` | Realistic：gz-sim 锁步，PX4 compose；速率环、控制分配、转子滞后、气动在 gz 内 | `awr.phys.gz.GzSimBackend`（d3-gz 容器）；`px4_sih` 后端仍是骨架（`open()` 返回 213） | **可用，仅 x500**（gz 模型只有 `x500_d4d`）；其他机型第 5 步 |
+| `l2` | Realistic：统一 L2 物理引擎（转子 / 执行器级驱动、速率环、控制分配、刚体惯量、气动 / 水动力），每个设备族一个域模型；gz-sim 锁步为交叉验证 | `awr.phys.l2`（[unified-l2.zh-CN.md](unified-l2.zh-CN.md)）；`awr.phys.gz.GzSimBackend`（d3-gz 容器，只有 `x500_d4d`） | **可用：多旋翼**（第 5 步 5a）；固定翼 / VTOL、陆、海的域模型随第 5 步后续补 |
 | `l3` | SITL：真实 PX4 / ArduPilot 飞控栈在环 | 无 | **无**，第 5 步 |
 | `fw` | 固定翼 / VTOL 快速档：运动学飞行 + 能量模型 | `Fidelity.FW`，stage `fw_kin`（`awr.sim.fixedwing`） | 可用 |
 
-机型声明（`fidelity.supported`）与代码实现取交集才算"可用"（`l2` 由 run_spec 的档位选择而不是机型字段，按 gz 有没有该机型判）；`awr.sim.device.ladder()` 对目录里每台设备、每一档给出 可用 / 已声明未实现 / 代码有、机型未声明 / 无。陆、海设备现在没有机型包，表里以"计划（第 5 步）"行列出（JPL 开源漫游车级、F1TENTH 级、OpenPodcar 级；BlueBoat 级、NAC-USV 级），第 5 步补机型包时同一张表自动变成实测状态。
+机型声明（`fidelity.supported`）与代码实现取交集才算"可用"（`l2` 由 run_spec 的档位选择而不是机型字段，按统一引擎有没有该设备族的域模型判，x500 另标 + gz）；`awr.sim.device.ladder()` 对目录里每台设备、每一档给出 可用 / 已声明未实现 / 代码有、机型未声明 / 无。陆、海设备现在没有机型包，表里以"计划（第 5 步）"行列出（JPL 开源漫游车级、F1TENTH 级、OpenPodcar 级；BlueBoat 级、NAC-USV 级），第 5 步补机型包时同一张表自动变成实测状态。
 
 `python -m awr.sim.device ladder [--json] [--responses]` 打印这张表（`awr.device_ladder.v1`）；在线页 `/anet4d/device/` 就是它。
 
@@ -50,6 +50,6 @@ gimbal: {pitch_min_deg: -90, pitch_max_deg: 30, yaw_min_deg: -160, yaw_max_deg: 
 
 ## 5. 没做的
 
-- `l2` 推广到 x500 以外的机型（gz 模型、PX4 参数集）与 `l3` SITL：第 5 步。
+- `l2`：第 5 步 5a 已由统一引擎给出多旋翼（见 unified-l2.zh-CN.md）；固定翼、陆、海的域模型与 `l3` SITL 在后面。
 - 陆、海机型包与它们的 L1 模型：第 5 步。
 - 云台 `l2` 的融合核版本与 checkpoint 中的角速度状态。

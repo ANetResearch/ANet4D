@@ -431,6 +431,24 @@ def run_fast(case: Case) -> CaseRun:
     return run_case(case, tier, pre_tick=pre)
 
 
+def run_l2(case: Case) -> CaseRun:
+    """The unified L2 engine (`awr.phys.l2.L2Tier`) on the same cases: same commands, reference tracker, BoxWorld and wind."""
+    from awr.phys.l2 import L2Tier
+
+    tier = L2Tier(case.uavs, dict(case.spawn), case.world(), grounded=list(case.grounded), vehicles=dict.fromkeys(case.uavs, VEHICLE),
+                  tick_ms=TICK_MS, history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None)
+    pre = None
+    if case.wind is not None:
+        wind = ConstWind(*case.wind)
+
+        def pre(k: int) -> None:
+            tier.set_wind(np.tile(wind.at(k * TICK_NS), (len(case.uavs), 1)))
+    return run_case(case, tier, pre_tick=pre)
+
+
+RUNNERS = {"fast": run_fast, "l2": run_l2}
+
+
 def compose_case_sdf(case: Case, endpoint: str, *, uavs_z: Mapping[str, float] | None = None, field_wind: bool = False) -> str:
     """gz 侧 run.sdf：机队（地面出生取 `GZ_GROUND_Z`；速度控制 "px4" 档）、z = 0 地面、用例盒体；有风时加 field 风插件
     （composite，x500）。"""
@@ -840,9 +858,10 @@ def _diff(a, b):
     return abs(float(a) - float(b))
 
 
-def compare_case(case: Case, fast: CaseRun, real: CaseRun) -> dict:
-    """一个用例的接口判定与动力学差异（两档）。"""
+def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, str] = ("fast", "realistic")) -> dict:
+    """一个用例的接口判定与动力学差异（两档；`labels` 为报告中两档的名字，缺省 Fast 对 Realistic，也用于 Fast 对统一 L2 引擎）。"""
     iface: dict[str, Any] = {}
+    la, lb = labels
     fails: list[str] = []
     da = [(d["tick"], d["uav"], d["kind"], d["ok"], d["code"]) for d in fast.dispatch]
     db = [(d["tick"], d["uav"], d["kind"], d["ok"], d["code"]) for d in real.dispatch]
@@ -853,17 +872,17 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun) -> dict:
     for u in case.uavs:
         sa, sb = _collapse(fast.status[u]), _collapse(real.status[u])
         exp = list(case.expect_status.get(u, ()))
-        st[u] = {"fast": sa, "realistic": sb, "expected": exp, "pass": sa == sb and (not exp or sa == exp)}
+        st[u] = {la: sa, lb: sb, "expected": exp, "pass": sa == sb and (not exp or sa == exp)}
         if not st[u]["pass"]:
-            fails.append(f"{u}: status sequence fast {sa} realistic {sb} expected {exp}")
+            fails.append(f"{u}: status sequence {la} {sa} {lb} {sb} expected {exp}")
     iface["status"] = st
     ct = {}
     for u, exp in case.expect_contacts.items():
         ka = [c["kind"] for c in fast.contacts if c["uav"] == u][:len(exp)]
         kb = [c["kind"] for c in real.contacts if c["uav"] == u][:len(exp)]
-        ct[u] = {"fast": ka, "realistic": kb, "expected": list(exp), "pass": ka == kb == list(exp)}
+        ct[u] = {la: ka, lb: kb, "expected": list(exp), "pass": ka == kb == list(exp)}
         if not ct[u]["pass"]:
-            fails.append(f"{u}: contacts fast {ka} realistic {kb} expected {list(exp)}")
+            fails.append(f"{u}: contacts {la} {ka} {lb} {kb} expected {list(exp)}")
     iface["contacts"] = ct
     n_exp = case.n_ticks * TICK_NS // STEP_NS + 1
     grid = bool(np.array_equal(fast.t_ns, real.t_ns)) and len(fast.t_ns) == n_exp and bool(np.all(np.diff(fast.t_ns) == STEP_NS))
@@ -874,7 +893,7 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun) -> dict:
     ma, mb = case_metrics(case, fast), case_metrics(case, real)
     if "onset_s" in ma:
         ok = all(x is not None and 0.0 < x <= ONSET_MAX_S + 1e-9 for x in (ma["onset_s"], mb["onset_s"]))
-        iface["command_onset"] = {"fast_s": ma["onset_s"], "realistic_s": mb["onset_s"], "max_s": ONSET_MAX_S, "pass": ok}
+        iface["command_onset"] = {f"{la}_s": ma["onset_s"], f"{lb}_s": mb["onset_s"], "max_s": ONSET_MAX_S, "pass": ok}
         if not ok:
             fails.append(f"command onset is not within (0, {ONSET_MAX_S}] s after the apply tick")
     iface["pass"] = not fails
@@ -914,15 +933,15 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun) -> dict:
     if case.id == "velocity_limit":
         cap = case.params["v_cap_mps"] + case.params["cap_margin_mps"]
         ok_cap = ma["v_max_mps"] <= cap and mb["v_max_mps"] <= cap
-        iface["limit_cap"] = {"cap_mps": cap, "fast_max_mps": ma["v_max_mps"], "realistic_max_mps": mb["v_max_mps"], "pass": ok_cap}
+        iface["limit_cap"] = {"cap_mps": cap, f"{la}_max_mps": ma["v_max_mps"], f"{lb}_max_mps": mb["v_max_mps"], "pass": ok_cap}
         if not ok_cap:
             iface["pass"] = False
             fails.append("speed above the 12 m/s limit")
     return {"id": case.id, "title": case.title, "interface": iface, "failures": fails,
-            "metrics": {"fast": ma, "realistic": mb}, "pos_rms_m": pos_rms,
+            "metrics": {la: ma, lb: mb}, "tiers": [la, lb], "pos_rms_m": pos_rms,
             "diff": diffs, "tol": tol, "within": within, "tol_pass": all(within.values()),
             "pass": bool(iface["pass"] and all(within.values())),
-            "wall_s": {"fast": fast.wall_s, "realistic": real.wall_s}}
+            "wall_s": {la: fast.wall_s, lb: real.wall_s}}
 
 
 # ---------------------------------------------------------------------------------------------------------------- 报告
@@ -969,7 +988,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m awr.phys.tier_compare")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--tier", choices=("fast", "realistic"), required=True)
+    r.add_argument("--tier", choices=("fast", "l2", "realistic"), required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--cases")
     r.add_argument("--launcher", default="local")
@@ -982,15 +1001,16 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--dz", type=float, default=0.0)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
+    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if a.cmd == "run":
         for c in _cases(a.cases):
-            run = run_fast(c) if a.tier == "fast" else run_realistic(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
+            run = RUNNERS[a.tier](c) if a.tier in RUNNERS else run_realistic(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
             run.save(out)
             print(f"[tier_compare] {c.id} {a.tier}: {run.wall_s} s", flush=True)
-        if not a.cases or REF_CASE.id in a.cases.split(","):
+        if a.tier != "l2" and (not a.cases or REF_CASE.id in a.cases.split(",")):
             if a.tier == "fast":
                 ref = run_fast(REF_CASE)
                 ref.save(out)
@@ -1015,15 +1035,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({k: v.get("pass") for k, v in doc.items()}), flush=True)
         return 0
     cases = []
-    meta: dict = {}
+    ta, tb = (x.strip() for x in a.tiers.split(","))
+    meta: dict = {"tiers": [ta, tb]}
     for c in CASES:
-        fa, re_ = CaseRun.load(out, c.id, "fast"), CaseRun.load(out, c.id, "realistic")
-        cases.append(compare_case(c, fa, re_))
+        fa, re_ = CaseRun.load(out, c.id, ta), CaseRun.load(out, c.id, tb)
+        cases.append(compare_case(c, fa, re_, (ta, tb)))
         meta.setdefault("kernel", fa.info.get("kernel"))
-        meta.setdefault("gz", {k: re_.info.get(k) for k in ("gz_sim_version", "plugin_build")})
+        meta.setdefault(tb, {k: re_.info.get(k) for k in ("gz_sim_version", "plugin_build", "engine", "kernel")})
     m25 = json.loads((out / "m25.json").read_text(encoding="utf-8")) if (out / "m25.json").is_file() else {}
     doc = build_report(cases, sampling=m25.get("sampling"), m25=m25.get("m25_bytewise"), meta=meta)
-    (out / "tier_compare.json").write_text(json.dumps(doc, indent=1, ensure_ascii=False, default=_json_default) + "\n", encoding="utf-8")
+    name = "tier_compare.json" if (ta, tb) == ("fast", "realistic") else f"tier_compare.{ta}-{tb}.json"
+    (out / name).write_text(json.dumps(doc, indent=1, ensure_ascii=False, default=_json_default) + "\n", encoding="utf-8")
     print(json.dumps(doc["summary"]), flush=True)
     return 0
 

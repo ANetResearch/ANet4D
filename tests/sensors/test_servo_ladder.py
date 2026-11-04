@@ -167,15 +167,17 @@ def test_ladder_reads_the_catalog_and_states_each_tier():
     by_id = {d["id"]: d for d in doc["devices"]}
     q1 = by_id["awr_q1"]
     assert q1["domain"] == "air" and q1["fidelity_declared"] == ["l0", "l1"] and q1["tiers"]["l1"]["status"] == "可用"
-    assert q1["tiers"]["l2"]["status"] == "无（gz 无该机型）" and q1["tiers"]["fw"]["status"] == "代码有、机型未声明"
+    assert q1["tiers"]["l2"]["status"] == "可用（统一引擎）" and q1["tiers"]["l2"]["engine"] == "unified"
+    assert q1["tiers"]["fw"]["status"] == "代码有、机型未声明"
     assert q1["sensors"]["eo"]["gimbal"]["servo_tier"] == "l1" and q1["sensors"]["eo"]["gimbal"]["rate_max_deg_s"] == 60
     assert by_id["awr_f1"]["tiers"]["fw"]["status"] == "可用"
-    assert doc["tiers"]["l2"]["status"].startswith("可用") and doc["tiers"]["l3"]["status"] == "无"
-    assert (
-        by_id["x500"]["tiers"]["l2"]["status"] == "可用（gz）"
-        and by_id["x500"]["tiers"]["l2"]["gz_model"] == "x500_d4d"
-    )
-    assert sum(d["tiers"]["l2"]["status"] == "可用（gz）" for d in doc["devices"]) == 2
+    assert doc["tiers"]["l2"]["status"] == "可用（统一引擎：multirotor）" and doc["tiers"]["l3"]["status"] == "无"
+    assert doc["tiers"]["l2"]["domains"]["multirotor"] and not doc["tiers"]["l2"]["domains"]["ugv"]
+    assert by_id["x500"]["tiers"]["l2"]["status"] == "可用（统一引擎 + gz）" and by_id["x500"]["tiers"]["l2"]["gz_model"] == "x500_d4d"
+    assert sum(d["tiers"]["l2"]["gz_model"] is not None for d in doc["devices"]) == 2
+    assert {d["id"] for d in doc["devices"] if d["tiers"]["l2"]["status"].startswith("可用")} == {d["id"] for d in doc["devices"] if d.get("category") == "multirotor"}
+    assert by_id["awr_f1"]["tiers"]["l2"]["status"] == "无（统一引擎尚无 fixed_wing 模型）"
+    assert by_id["ugv_rover"]["tiers"]["l2"]["status"] == "无（统一引擎尚无 ugv 模型）"
     assert {d["domain"] for d in doc["devices"]} == {"air", "land", "sea"}
     assert all(d["status"] == "planned" for d in doc["devices"] if d["domain"] != "air")
     assert set(DECLARED.values()) <= set(TIERS)

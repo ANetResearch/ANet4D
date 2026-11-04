@@ -53,6 +53,8 @@ class Setpoint:
     v_enu: tuple[float, float, float]
     yaw_rate: float = 0.0
     enabled: bool = True
+    a_ff: tuple[float, float, float] = (0.0, 0.0, 0.0)   # 参考加速度前馈（`RefTracker(inner_pid=True)`，L2 引擎自己做速度 PID）
+    yaw: float = math.nan                                 # 航向设定（ENU，rad；NaN 为只给角速度）
 
 
 @dataclass
@@ -218,8 +220,13 @@ class RefTracker:
     = MC_YAW_P · Δψ（与 FleetSim 姿态环同式，无前馈），按机型偏航限幅。
     地面高 `ground_h(xy)`（ENU，缺省 0）给出 AGL 与起飞基准；接触、落地与坠毁取宿主判定（`observe`）。"""
 
-    def __init__(self, *, vehicle: str = "x500", ground_h: Callable[[np.ndarray], float] | None = None, step_ns: int = 4_000_000) -> None:
+    def __init__(self, *, vehicle: str = "x500", ground_h: Callable[[np.ndarray], float] | None = None, step_ns: int = 4_000_000,
+                 vehicles: Mapping[str, str] | None = None, inner_pid: bool = False) -> None:
         self.vehicle = vehicle
+        self.vehicles = dict(vehicles or {})                    # per-vehicle profile refs (L2 engine); others take `vehicle`
+        # inner_pid（统一 L2 引擎）：只给参考（限幅后的速度设定、加速度前馈、航向设定），速度积分、加速度阻尼与偏航 P 由引擎内
+        # 的飞控级联按物理步执行（与 FleetSim pos_ctrl / att_ctrl 同式）；False（gz）时折算为速度当量叠加到设定上。
+        self.inner_pid = bool(inner_pid)
         self.ground_h = ground_h
         self.step_ns = int(step_ns)
         self.tick_s = 0.1
@@ -239,7 +246,8 @@ class RefTracker:
             r = np.asarray(init[u], np.float64)
             z = float(r[2]) if u not in grounded else BODY_Z_M
             spawn[u] = ((float(r[0]), float(r[1]), z), yaw_of(r[3:7]))
-        self._ft = FastTier(list(uavs), spawn, None, grounded=list(grounded), vehicles=dict.fromkeys(uavs, self.vehicle), history_s=0.5)
+        self._ft = FastTier(list(uavs), spawn, None, grounded=list(grounded), vehicles={u: self.vehicles.get(u, self.vehicle) for u in uavs},
+                            history_s=0.5)
         self._slot = {u: i for i, u in enumerate(uavs)}
         self._i = {u: np.zeros(3) for u in uavs}
 
@@ -360,6 +368,9 @@ class RefTracker:
         vs[2] = min(max(vs[2], -(K.TKO_SPEED if mode == K.M_TAKEOFF else float(LT[lim, K.L_ZUP]))), float(LT[lim, K.L_ZDN]))
         v_enu = np.array([vs[1], vs[0], -vs[2]])
         a_enu = np.array([tra[1], tra[0], -tra[2]]) if ff else np.zeros(3)
+        if self.inner_pid:
+            yaw_sp = (math.pi / 2 - float(S.yaw_sp[s]) + math.pi) % TWO_PI - math.pi
+            return Setpoint((float(v_enu[0]), float(v_enu[1]), float(v_enu[2])), 0.0, a_ff=tuple(float(x) for x in a_enu), yaw=yaw_sp)
         touch = mode == K.M_LAND and phase >= 2
         if j == 0:                                                    # 速度积分（tick 起点误差，PX4 K_i 的速度当量）
             if o.in_contact or touch:
