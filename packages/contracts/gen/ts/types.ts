@@ -6716,6 +6716,326 @@ export interface Grid1 {
   method?: string
 }
 /**
+ * awr.device_catalog.ground.v1 (ground vehicle catalog). `vehicles/ground/catalog.json`: the ground vehicle packages the device ladder and the unified L2 engine know about. Kept apart from the air catalog (awr.vehicle_catalog.v1) so that the sandbox's nest, mission and UI machinery, which is multirotor- and fixed-wing-specific, is untouched; the device ladder joins both.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "GroundCatalog".
+ */
+export interface GroundCatalog {
+  schema: 'awr.device_catalog.ground.v1'
+  catalog_version: string
+  disclaimer_zh: string
+  /**
+   * @minItems 1
+   */
+  models: [
+    {
+      id: string
+      dir: string
+      profile_version: string
+      display_name: string
+      display_name_zh: string
+      category: 'ugv'
+      size_class: 'small' | 'medium' | 'large'
+      /**
+       * true: a generic reference vehicle (all values D unless sourced); false: modelled on a named public platform
+       */
+      reference: boolean
+      visible: boolean
+      order?: number
+      summary_zh: string
+    },
+    ...{
+      id: string
+      dir: string
+      profile_version: string
+      display_name: string
+      display_name_zh: string
+      category: 'ugv'
+      size_class: 'small' | 'medium' | 'large'
+      /**
+       * true: a generic reference vehicle (all values D unless sourced); false: modelled on a named public platform
+       */
+      reference: boolean
+      visible: boolean
+      order?: number
+      summary_zh: string
+    }[]
+  ]
+}
+/**
+ * awr.vehicle.ground.v1 (ground vehicle profile). Ground vehicle package `vehicles/ground/<dir>/params.yaml`: the land counterpart of awr.vehicle.v1 with the same conventions (every physical value carries value / conf / src), read by the unified L2 engine's ground domain model (awr.phys.l2.ground) and by the device ladder (awr.sim.device). Dynamics follow the single-track (bicycle) model with linear tyres and load transfer as published by CommonRoad and used by f1tenth_gym: `tire.c_sf` / `c_sr` are cornering stiffness coefficients per unit normal load (1/rad), `tire.mu` the friction coefficient.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "GroundProfile".
+ */
+export interface GroundProfile {
+  schema: 'awr.vehicle.ground.v1'
+  profile_version: string
+  id: string
+  display_name: string
+  display_name_zh?: string
+  kind: 'ugv'
+  status: 'regression' | 'placeholder' | 'identified'
+  /**
+   * the public platform this package is modelled on
+   */
+  reference?: string
+  drive: {
+    type: 'ackermann' | 'corner_steer' | 'differential' | 'skid_steer'
+    wheels: number
+    driven: 'front' | 'rear' | 'all'
+    body: 'flu'
+  }
+  mass_kg: GroundProfileQpos
+  inertia_zz_kgm2: GroundProfileQpos1
+  geometry: {
+    lf_m: GroundProfileQpos2
+    lr_m: GroundProfileQpos3
+    track_m: GroundProfileQpos4
+    cg_height_m: GroundProfileQpos5
+    wheel_radius_m: GroundProfileQpos6
+    collision_radius_m: GroundProfileQpos7
+    size_m: {
+      value: {
+        l: number
+        w: number
+        h: number
+      }
+      conf: 'A' | 'B' | 'C' | 'D'
+      src: string
+    }
+  }
+  tire: {
+    model: 'linear_st'
+    mu: GroundProfileQpos8
+    c_sf: GroundProfileQpos9
+    c_sr: GroundProfileQpos10
+  }
+  actuation: {
+    steer_max_rad: GroundProfileQpos11
+    steer_rate_max_rad_s: GroundProfileQpos12
+    v_max_mps: GroundProfileQpos13
+    v_min_mps: GroundProfileQ
+    a_max_mps2: GroundProfileQpos14
+    a_brake_mps2: GroundProfileQpos15
+    v_switch_mps: GroundProfileQpos16
+    k_speed_hz?: GroundProfileQpos17
+  }
+  resistance?: {
+    c_rr?: GroundProfileQ1
+    cda_m2?: GroundProfileQ2
+  }
+  battery?: {
+    capacity_wh?: GroundProfileQpos18
+    p_drive_w?: GroundProfileQpos19
+    endurance_s?: GroundProfileQpos20
+  }
+  fidelity: {
+    default: 'l0' | 'l2'
+    /**
+     * @minItems 1
+     */
+    supported: ['l0' | 'l2', ...('l0' | 'l2')[]]
+  }
+  model: WorldCommonRelHref
+  sensors?: {
+    [k: string]: {
+      file: string
+      default?: boolean
+    }
+  }
+  derived?: {
+    [k: string]: number | null
+  }
+  notes?: string[]
+}
+export interface GroundProfileQpos {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos1 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * CG to front axle
+ */
+export interface GroundProfileQpos2 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * CG to rear axle
+ */
+export interface GroundProfileQpos3 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos4 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos5 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos6 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos7 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "GroundProfileQpos".
+ */
+export interface GroundProfileQpos8 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * front cornering stiffness per unit normal load, 1/rad (CommonRoad C_Sf)
+ */
+export interface GroundProfileQpos9 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * rear cornering stiffness per unit normal load, 1/rad (CommonRoad C_Sr)
+ */
+export interface GroundProfileQpos10 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos11 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos12 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos13 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * most negative (reverse) speed
+ */
+export interface GroundProfileQ {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos14 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos15 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * above this speed the available acceleration falls as v_switch / v (power limit)
+ */
+export interface GroundProfileQpos16 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * speed loop proportional gain: acceleration per speed error (1/s)
+ */
+export interface GroundProfileQpos17 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * rolling resistance coefficient (deceleration c_rr*g)
+ */
+export interface GroundProfileQ1 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQ2 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos18 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * mean drive power at cruise
+ */
+export interface GroundProfileQpos19 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+export interface GroundProfileQpos20 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "GroundProfileQ".
+ */
+export interface GroundProfileQ3 {
+  value: number
+  conf: 'A' | 'B' | 'C' | 'D'
+  src: string
+  check?: string
+}
+/**
  * IMU file sensors/imu.yaml (awr.sensor.imu.v1). AWR-16 §11.6 (D1-ext structure; V0.4). Units of noise terms are registered in rt/units.json exceptions.
  *
  * This interface was referenced by `AwrContracts`'s JSON-Schema
