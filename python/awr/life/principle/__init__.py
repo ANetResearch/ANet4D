@@ -255,15 +255,16 @@ def check(root: Path) -> dict:
             sem = json.loads(sem_path.read_text(encoding="utf-8"))
             if schema_id(sem.get("schema")) != SEMANTICS_SCHEMA:
                 errors.append(f"semantics: schema {SEMANTICS_SCHEMA} required")
-            ids: set[str] = set()
+            # ids are unique within a collection; a park POI may carry the id of its open area
+            ids: dict[str, set[str]] = {}
 
             def unique(kind: str, item: dict) -> None:
                 i = item.get("id")
                 if not isinstance(i, str) or not i:
                     errors.append(f"semantics.{kind}: an item has no id")
-                elif i in ids:
+                elif i in ids.setdefault(kind, set()):
                     errors.append(f"semantics.{kind}: duplicate id {i}")
-                ids.add(i)
+                ids.setdefault(kind, set()).add(i)
 
             def inside(pts) -> bool:
                 if not bounds:
