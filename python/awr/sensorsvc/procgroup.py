@@ -242,7 +242,10 @@ class RenderGroup:
     def _lost(self, k: int, detail: str, traceback_text: str = "") -> SensorSvcError:
         """渲染进程 k 失败时的错误：GPU 丢失（回溯带设备丢失特征，或本应有 GPU 而设备节点已打不开）为 647，其余为 648。
         647 的 `exitcode` 为负时即被信号终止（EGL 段错误为 -11）。"""
-        code = self.procs[k].exitcode
+        proc = self.procs[k]
+        if proc.exitcode is None:                                      # the pipe closes before the child is reaped: wait for it
+            proc.join(2.0)
+        code = proc.exitcode
         if is_gpu_lost_message(traceback_text):
             return gpu_lost(f"render proc {k} {detail}", proc=k, exitcode=code)
         if gpu_expected():

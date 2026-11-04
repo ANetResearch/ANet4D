@@ -90,12 +90,15 @@ class Client:
     times: list[Any] = field(default_factory=list)
     channels: dict[int, dict] = field(default_factory=dict)
     auto_ack: bool = True
+    pending: list[tuple[str, Any]] = field(default_factory=list)      # messages settle() took in ahead of time, replayed by recv()
 
     @property
     def topic_ids(self) -> dict[str, int]:
         return {c["topic"]: cid for cid, c in self.channels.items()}
 
     async def recv(self, timeout: float = 5.0) -> tuple[str, Any]:
+        if self.pending:
+            return self.pending.pop(0)
         m = await asyncio.wait_for(self.ws.recv(), timeout)
         if isinstance(m, bytes):
             if m[0] == F.OP_TIME:
@@ -127,6 +130,24 @@ class Client:
             kind, x = await self.recv(left)
             if pred(kind, x):
                 return kind, x
+
+    async def settle(self, quiet_s: float = 0.3, max_s: float = 3.0) -> None:
+        """接收到 advertise 停止（quiet_s 内没有新的 advertise）为止，最多 max_s：网关按车辆到达逐批 advertise，慢机器上
+        刚握手完 `topic_ids` 可能还不全（托管 CI 的 4 核 runner）。其间收到的其他消息排进 `pending`，之后的 recv() 先按原序
+        返回它们，所以等某条消息的测试不受影响。"""
+        end = time.monotonic() + max_s
+        last = time.monotonic()
+        taken: list[tuple[str, Any]] = []
+        while time.monotonic() < end:
+            try:
+                kind, x = await self.recv(max(0.0, min(quiet_s - (time.monotonic() - last), end - time.monotonic())))
+            except TimeoutError:
+                break
+            if kind == "json" and x["op"] == "advertise":
+                last = time.monotonic()
+            else:
+                taken.append((kind, x))
+        self.pending.extend(taken)
 
     async def drain(self, seconds: float) -> None:
         """持续接收（自动 ack）seconds 秒。"""
@@ -221,6 +242,7 @@ async def open_client(stack: Any, tok: str | None, *, hello: bool = True, auto_a
     await c.handshake()
     if hello:
         await c.hello(resume=resume)
+        await c.settle()
     return c
 
 

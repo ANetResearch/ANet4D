@@ -299,6 +299,7 @@ def test_ranked_runs_reject_agc_jpeg() -> None:
 
 
 def test_payload_length_checks() -> None:
+    pytest.importorskip("foxglove_schemas_protobuf")
     import zstandard
 
     from awr.bench.recorder.channels import thermal_message
@@ -320,6 +321,7 @@ def test_payload_length_checks() -> None:
 # ---------------------------------------------------------------- 录制 u16 通道（D3-AC-61 交付字节即存档字节；D3-AC-63）
 
 def test_recorder_archives_delivered_bytes(tmp_path: Path) -> None:
+    pytest.importorskip("foxglove_schemas_protobuf")
     from mcap.reader import make_reader
 
     from awr.agentsdk.env.recorder import RAW_TOPIC_PATTERNS, EnvRecorder, RecorderOptions

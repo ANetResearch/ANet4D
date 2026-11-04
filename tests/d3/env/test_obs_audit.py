@@ -32,7 +32,7 @@ MOUNT = {"t_bs_m": [0.1, 0, -0.05], "q_bs_xyzw": [0, 0, 0, 1]}
 
 
 def _jpeg(extra: bytes = b"") -> bytes:
-    from PIL import Image
+    Image = pytest.importorskip("PIL.Image")
 
     b = io.BytesIO()
     Image.fromarray(np.full((16, 16, 3), 90, np.uint8)).save(b, format="JPEG", quality=90)

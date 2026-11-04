@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -133,6 +134,9 @@ def test_resim_step_matches_d2_baseline(tmp_path) -> None:
     base = m.load_baseline()["resim"]
     if resolve_kernel(base["source"]["kernel"])[0] != base["source"]["kernel"]:
         pytest.skip(f"kernel {base['source']['kernel']} unavailable; the D2 baseline was recorded with it")
+    world = m.load_gate()["resim"]["world_id"]
+    if not (Path(os.environ.get("AWR_WORLDS_DIR", ROOT / "worlds")) / world).is_dir():
+        pytest.skip(f"needs worlds/{world} (make worlds): the D2 baseline was recorded with its geometry loaded")
     out = tmp_path / "out"
     assert m.main(["--steps", "resim", "--out", str(out)]) == 0
     st = json.loads((out / "report.json").read_text(encoding="utf-8"))["steps"]["resim"]

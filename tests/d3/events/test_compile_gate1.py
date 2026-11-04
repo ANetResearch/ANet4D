@@ -24,6 +24,7 @@ from awr.sim.events.errors import EventError
 
 ROOT = Path(__file__).resolve().parents[3]
 CROP = ROOT / "worlds" / "oryahovo-crop1"
+pytestmark = pytest.mark.skipif(not CROP.is_dir(), reason="needs worlds/oryahovo-crop1 (make worlds)")
 
 
 def _sq(cx: float, cy: float, r: float) -> list[list[float]]:

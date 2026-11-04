@@ -160,9 +160,12 @@ def test_decoy_watch_records_open_and_read(tmp_path: Path) -> None:
     d = make_decoy(tmp_path / "hid")
     assert sorted(x.name for x in d.iterdir()) == ["index.json"] and (d / "index.json").read_text() == "{}\n"
     assert oct(d.stat().st_mode & 0o777) == "0o755" and oct((d / "index.json").stat().st_mode & 0o777) == "0o444"
-    quiet = HardeningMonitor("d3-agent-x-uav-01", decoy=make_decoy(tmp_path / "quiet"), stats=lambda n: None)
+    stub = tmp_path / "docker"                                           # the docker-free half: the monitor container is a stand-in
+    stub.write_text("#!/bin/sh\nexit 0\n")
+    stub.chmod(0o755)
+    quiet = HardeningMonitor("d3-agent-x-uav-01", docker=str(stub), decoy=make_decoy(tmp_path / "quiet"), stats=lambda n: None)
     quiet.watch()
-    mon = HardeningMonitor("d3-agent-x-uav-02", decoy=d, stats=lambda n: None)
+    mon = HardeningMonitor("d3-agent-x-uav-02", docker=str(stub), decoy=d, stats=lambda n: None)
     mon.watch()
     subprocess.run([sys.executable, "-c", f"import os; print(os.listdir({str(d)!r})); open({str(d / 'index.json')!r}).read()"], check=True,
                    capture_output=True)

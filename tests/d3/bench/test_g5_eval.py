@@ -56,6 +56,7 @@ def _nadir(x: float, y: float, z: float) -> tuple[np.ndarray, np.ndarray]:
 
 
 # ---------------------------------------------------------------------------------------------------------------- 坐标与取景
+@pytest.mark.skipif(not (REPO / "worlds/oryahovo-crop1").is_dir(), reason="needs worlds/oryahovo-crop1 (make worlds)")
 def test_gs_world_offset_matches_product_world_and_rejects_rotation() -> None:
     coord = json.loads((REPO / "worlds/oryahovo-crop1/coordinate.json").read_text(encoding="utf-8"))
     assert g5.gs_world_offset(coord) == [0.0, 0.0, 1.094441]      # 产品世界与 r11 只差高程平移

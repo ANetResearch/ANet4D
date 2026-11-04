@@ -67,6 +67,7 @@ class _Backend:
 
 @pytest.mark.parametrize("ref", ["p600_bench", "x500"])
 def test_gz_tier_writes_mounts_and_rewrites_run_sdf(ref: str, tmp_path: Path, monkeypatch) -> None:
+    pytest.importorskip("google.protobuf")
     import awr.phys.gz.backend as B
     import awr.phys.gz.instance as I
     import awr.world.export.gz as X

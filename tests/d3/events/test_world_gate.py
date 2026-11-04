@@ -20,6 +20,7 @@ from awr.world.geometry.status import CALIBRATION_GATES, SCALE_STATUSES, metric_
 
 ROOT = Path(__file__).resolve().parents[3]
 CROP = ROOT / "worlds" / "oryahovo-crop1"
+pytestmark = pytest.mark.skipif(not CROP.is_dir(), reason="needs worlds/oryahovo-crop1 (make worlds)")
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "world"))
 sys.path.insert(0, str(HERE))

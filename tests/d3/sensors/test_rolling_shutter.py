@@ -122,6 +122,7 @@ def test_profile_readout_and_mid_row_timestamp() -> None:
 def test_camera_obs_timing_fields_for_rgb1080_rs() -> None:
     """frame.v1：`agent_view.t_mid_ns`、`readout_ns = 20,000,000`，真值 timing 记录 9 个节点与读出窗口。"""
     pytest.importorskip("zstandard")
+    pytest.importorskip("PIL")
     from awr.sensorsvc.camera.encode import CpuJpegEncoder
     from awr.sensorsvc.camera.raster import RenderOut
     from awr.sensorsvc.frame import FrameContext, camera_frame

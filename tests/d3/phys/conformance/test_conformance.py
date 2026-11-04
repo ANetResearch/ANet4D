@@ -293,6 +293,7 @@ def test_m25_sampling_consistency_lidar_and_imu(ref_run: CaseRun) -> None:
 
 
 def test_m25_same_pose_history_is_bytewise_identical(ref_run: CaseRun) -> None:
+    pytest.importorskip("PIL")
     a = m25_digest(ref_run, world=BoxWorld(), max_ticks=25)
     b = m25_digest(ref_run, world=BoxWorld(), max_ticks=25)
     assert a["sha256"] == b["sha256"] and a["frames"]["lidar0"] == 25 and a["frames"]["eo"] >= 25

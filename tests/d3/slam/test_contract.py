@@ -197,7 +197,7 @@ def _lidar_points(seq: int, frac: float = 0.6) -> np.ndarray:
 
 @cache
 def _jpeg() -> bytes:
-    from PIL import Image
+    Image = pytest.importorskip("PIL.Image")
 
     b = io.BytesIO()
     Image.fromarray(np.full((16, 20, 3), 90, np.uint8)).save(b, format="JPEG", quality=90)
