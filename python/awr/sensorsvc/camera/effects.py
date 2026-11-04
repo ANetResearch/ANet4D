@@ -283,11 +283,12 @@ def depth_sensor(depth_m: np.ndarray, cfg: DepthSensorConfig, *, seed: int, uav_
 
 def gimbal_reading(g_true: tuple[float, float, float], sigma_deg: float, *, seed: int, uav_no: int, sensor_no: int,
                    frame_index: int) -> tuple[float, float, float]:
-    """云台编码器读数：每帧每轴白噪声 sigma（度）。"""
+    """云台编码器读数（弧度）：每帧每轴白噪声 sigma（度，换算成弧度后相加；以前把度直接加在弧度上）。"""
     if sigma_deg <= 0:
         return tuple(float(v) for v in g_true)  # type: ignore[return-value]
     n = pixel_normals(seed, uav_no, frame_index, CHANNELS_V2["cam_gimbal"][0] + sensor_no, 3, 1).ravel()
-    return tuple(float(v) + sigma_deg * float(e) for v, e in zip(g_true, n, strict=True))  # type: ignore[return-value]
+    s = math.radians(sigma_deg)
+    return tuple(float(v) + s * float(e) for v, e in zip(g_true, n, strict=True))  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------------------------------- 渲染域着色（阴影、天气）
