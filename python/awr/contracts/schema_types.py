@@ -698,6 +698,21 @@ __all__ = [
     "PresetsWindows",
     "PresetsWindowsEnter",
     "PresetsWindowsLeave",
+    "PrincipleV1",
+    "PrincipleV1Capabilities",
+    "PrincipleV1Capability",
+    "PrincipleV1Frame",
+    "PrincipleV1FrameOrigin",
+    "PrincipleV1Layer",
+    "PrincipleV1Layers",
+    "PrincipleV1LayersLaneNetwork",
+    "PrincipleV1LayersOutdoorPlaces",
+    "PrincipleV1LayersSemantics",
+    "PrincipleV1LayersSupport",
+    "PrincipleV1LayersWorld",
+    "PrincipleV1Provenance",
+    "PrincipleV1Sha256",
+    "PrincipleV1Source",
     "Problem",
     "QaReport",
     "QaReportFirstScreen",
@@ -1372,6 +1387,14 @@ type Predicate = PredicateNode
 
 # agent/predicate.schema.json#/$defs/node
 type PredicateNode = PredicateNodeOneOf0 | PredicateNodeOneOf1 | PredicateNodeOneOf2 | PredicateNodeOneOf3 | PredicateNodeOneOf4 | PredicateNodeOneOf5
+
+
+# life/principle.v1.schema.json#/$defs/sha256
+type PrincipleV1Sha256 = str
+
+
+# life/principle.v1.schema.json#/$defs/source
+type PrincipleV1Source = Literal["measured", "derived", "assigned", "manual"]
 
 
 # recon/recon-ir.schema.json# Recon IR recon-ir@1 (reconstruction/<session>/)
@@ -7485,6 +7508,111 @@ class PresetsWindowsLeave(TypedDict):
     precip: list[float]
     vis: list[float]
     misc: list[float]
+
+
+# life/principle.v1.schema.json# Scene principle manifest (awr.life.principle.v1)
+class PrincipleV1(TypedDict):
+    schema: Literal["awr.life.principle.v1"]
+    id: str
+    name: NotRequired[str]
+    name_zh: NotRequired[str]
+    content_version: PrincipleV1Sha256
+    frame: PrincipleV1Frame
+    layers: PrincipleV1Layers
+    capabilities: PrincipleV1Capabilities
+    provenance: PrincipleV1Provenance
+
+
+# life/principle.v1.schema.json#/properties/capabilities
+class PrincipleV1Capabilities(TypedDict):
+    walking: PrincipleV1Capability
+    vehicles_parked: NotRequired[PrincipleV1Capability]
+    driving: PrincipleV1Capability
+    indoor: NotRequired[PrincipleV1Capability]
+    public_transport: NotRequired[PrincipleV1Capability]
+    cycling: NotRequired[PrincipleV1Capability]
+    water: NotRequired[PrincipleV1Capability]
+
+
+# life/principle.v1.schema.json#/$defs/capability
+class PrincipleV1Capability(TypedDict):
+    status: Literal["supported", "unsupported", "unknown", "absent"]
+    reason: NotRequired[str]
+    evidence: NotRequired[str]
+
+
+# life/principle.v1.schema.json#/properties/frame
+class PrincipleV1Frame(TypedDict):
+    units: Literal["m"]
+    axes: Literal["ENU"]
+    z_up: Literal[True]
+    bounds: list[float]
+    georeferenced: NotRequired[bool]
+    origin: NotRequired[PrincipleV1FrameOrigin]
+
+
+# life/principle.v1.schema.json#/properties/frame/properties/origin
+class PrincipleV1FrameOrigin(TypedDict):
+    lat: NotRequired[float]
+    lon: NotRequired[float]
+    alt_m: NotRequired[float]
+    crs: NotRequired[str]
+
+
+# life/principle.v1.schema.json#/$defs/layer
+class PrincipleV1Layer(TypedDict):
+    href: str
+    source: PrincipleV1Source
+    verified: bool
+    method: NotRequired[str]
+    note: NotRequired[str]
+
+
+# life/principle.v1.schema.json#/properties/layers
+class PrincipleV1Layers(TypedDict):
+    support: PrincipleV1LayersSupport
+    semantics: PrincipleV1LayersSemantics
+    lane_network: NotRequired[PrincipleV1LayersLaneNetwork]
+    outdoor_places: NotRequired[PrincipleV1LayersOutdoorPlaces]
+    world: PrincipleV1LayersWorld
+
+
+# life/principle.v1.schema.json#/properties/layers/properties/lane_network
+class PrincipleV1LayersLaneNetwork(TypedDict):
+    format: Literal["sumo-net"]
+    sha256: PrincipleV1Sha256
+
+
+# life/principle.v1.schema.json#/properties/layers/properties/outdoor_places
+class PrincipleV1LayersOutdoorPlaces(TypedDict):
+    schema: Literal["awr.life.outdoor_places.v1"]
+    sha256: PrincipleV1Sha256
+
+
+# life/principle.v1.schema.json#/properties/layers/properties/semantics
+class PrincipleV1LayersSemantics(TypedDict):
+    schema: Literal["awr.life.town_semantics.v1"]
+    sha256: PrincipleV1Sha256
+
+
+# life/principle.v1.schema.json#/properties/layers/properties/support
+class PrincipleV1LayersSupport(TypedDict):
+    schema: Literal["awr.life.support.v1"]
+    files: dict[str, PrincipleV1Sha256]
+
+
+# life/principle.v1.schema.json#/properties/layers/properties/world
+class PrincipleV1LayersWorld(TypedDict):
+    href: str
+    content_version: str
+    raycast_sha256: PrincipleV1Sha256
+
+
+# life/principle.v1.schema.json#/properties/provenance
+class PrincipleV1Provenance(TypedDict):
+    producer: str
+    inputs: NotRequired[dict[str, Any]]
+    notes: NotRequired[str]
 
 
 # rest/problem.schema.json# REST error response (application/problem+json)
