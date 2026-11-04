@@ -34,6 +34,8 @@ Realistic 侧以测试构建的运动学注入（`Drone4DClock` `<inject>`，`in
   python -m awr.phys.tier_compare run --tier realistic --out DIR                   # d3-gz 容器内（launcher = local），含注入
   python -m awr.phys.tier_compare m25 --out DIR [--world WORLD_DIR]                # M25 两档采样对拍与逐字节（--world 时 GPU 相机）
   python -m awr.phys.tier_compare report --out DIR                                 # 汇总为 DIR/tier_compare.json
+  python -m awr.phys.tier_compare run --set ground --tier l2|st --out DIR          # 地面域：统一引擎 ugv 对 CommonRoad ST 基准
+  python -m awr.phys.tier_compare report --set ground --tiers l2,st --out DIR      # DIR/tier_compare.ground.l2-st.json
 """
 
 from __future__ import annotations
@@ -54,9 +56,9 @@ import numpy as np
 from awr.phys.adapter import OrbitSpec, TierCommand
 from awr.phys.pose_history import STATE_N
 
-__all__ = ["CASES", "IMU_TOL", "REF_CASE", "SCHEMA", "BoxWorld", "Case", "CaseRun", "ConstWind", "build_report", "case_metrics",
+__all__ = ["CASES", "GROUND_CASES", "IMU_TOL", "REF_CASE", "SCHEMA", "BoxWorld", "Case", "CaseRun", "ConstWind", "build_report", "case_metrics",
            "compare_case", "inject_sdf", "lidar_point_poses", "m25_compare", "m25_digest", "pose_history_diff", "run_case",
-           "run_fast", "run_realistic", "write_inject"]
+           "run_fast", "run_l2", "run_realistic", "run_st", "write_inject"]
 
 SCHEMA = "drone4d.phys.tier_compare.v1"
 TICK_MS = 100
@@ -273,13 +275,27 @@ class Case:
     expect_contacts: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     tol: Mapping[str, float] = field(default_factory=dict)
     params: Mapping[str, Any] = field(default_factory=dict)
+    vehicle: str = VEHICLE                                 # profile ref for every vehicle of the case (air x500, ground f1tenth …)
 
     @property
     def uavs(self) -> tuple[str, ...]:
         return tuple(self.spawn)
 
+    @property
+    def metric(self) -> str:
+        """Which metric set applies (``params["metric"]``, default the case id): ground cases reuse the air metrics by name."""
+        return str(self.params.get("metric", self.id))
+
     def world(self) -> BoxWorld | None:
         return BoxWorld(self.boxes) if self.boxes else None
+
+    def ground(self) -> Callable[[np.ndarray], float] | None:
+        """Terrain for the ground cases: ``params["plane"] = (gx, gy)`` is the plane z = gx·x + gy·y; None is the world's DSM."""
+        pl = self.params.get("plane")
+        if pl is None:
+            return None
+        gx, gy = float(pl[0]), float(pl[1])
+        return lambda xy: gx * float(xy[0]) + gy * float(xy[1])
 
 
 def _c(uav: str, kind: str, k: int, **kw) -> TierCommand:
@@ -334,6 +350,50 @@ REF_CASE = Case("inject_ref", "参考轨迹：起飞、斜向速度带偏航、�
                  70: (_c("u1", "velocity", 70, vel_enu_mps=(4.0, 2.0, 0.5), yaw_rate_rps=0.4),),
                  130: (_c("u1", "goto", 130, target_enu_m=(10.0, 0.0, 8.0), speed_mps=5.0),),
                  190: (_c("u1", "land", 190),)}, grounded=("u1",))
+
+# 地面域用例（统一引擎 ugv 域模型对 CommonRoad ST 基准，`--set ground`）：机型缺省 F1TENTH 级（f1tenth_gym 参数，A 级），
+# 另两台（OpenPodcar 级、JPL 漫游车级）各一个用例看参数是否起作用；撞墙用例只有引擎（ST 基准无世界）
+M_ = "MOVING"
+_GSQ = np.array([[20.0, 0.0, 0.0], [20.0, 20.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 0.0]])
+_GWALL = Box((16.0, -5.0, 0.0), (21.0, 5.0, 3.0))                    # face on a DSM cell edge: the mesh query sees it first
+GROUND_CASES: tuple[Case, ...] = (
+    Case("g_speed_step", "静止 → 3 m/s 速度阶跃 → 停车", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 100,
+         {5: (_c("c1", "velocity", 5, vel_enu_mps=(3.0, 0.0, 0.0)),), 60: (_c("c1", "velocity", 60, vel_enu_mps=(0.0, 0.0, 0.0)),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"rise_s": 0.3, "overshoot_pct": 10.0, "pos_rms_m": 1.0},
+         params={"metric": "velocity_step", "step_tick": 5, "v_mps": 3.0, "until_tick": 60}, vehicle="f1tenth"),
+    Case("g_speed_limit", "30 m/s 速度指令按 20 m/s 限幅（功率段 a_max·v_switch/v）", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 150,
+         {5: (_c("c1", "velocity", 5, vel_enu_mps=(30.0, 0.0, 0.0)),)},
+         expect_status={"c1": (G_, M_)}, tol={"v_steady_mps": 1.0},
+         params={"metric": "velocity_limit", "v_cap_mps": 20.0, "cap_margin_mps": 0.3}, vehicle="f1tenth"),
+    Case("g_goto_stop", "goto 到 (20, 10) 并停车，3 m/s", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 200,
+         {5: (_c("c1", "goto", 5, target_enu_m=(20.0, 10.0, 0.0), speed_mps=3.0),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"t_arrive_s": 1.0, "rest_err_m": 1.0, "pos_rms_m": 1.0},
+         params={"metric": "goto_stop", "start_tick": 5, "target": (20.0, 10.0)}, vehicle="f1tenth"),
+    Case("g_waypoints", "20 m × 20 m 方形路线，3 m/s", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 400,
+         {5: (_c("c1", "follow_path", 5, path_enu_m=_GSQ, speed_mps=3.0),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"pos_rms_m": 1.5, "arrival_s_per_100m": 2.0},
+         params={"metric": "waypoints", "start_tick": 5, "path": _GSQ.tolist()}, vehicle="f1tenth"),
+    Case("g_orbit", "半径 6 m、2 m/s 绕一圈", {"c1": ((6.0, 0.0, 0.0), math.pi / 2)}, 300,
+         {5: (_c("c1", "orbit", 5, orbit=OrbitSpec((0.0, 0.0, 0.0), 6.0, cw=False, turns=1.0), speed_mps=2.0),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"pos_rms_m": 1.5, "arrival_s_per_100m": 2.0, "radius_rms_m": 0.5},
+         params={"metric": "orbit", "start_tick": 5, "center": (0.0, 0.0, 0.0), "radius_m": 6.0}, vehicle="f1tenth"),
+    Case("g_slope", "15 % 坡上 2 m/s 定速爬坡（z 跟随地形、姿态沿坡面法向）", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 150,
+         {5: (_c("c1", "velocity", 5, vel_enu_mps=(2.0, 0.0, 0.0)),)},
+         expect_status={"c1": (G_, M_)}, tol={"v_hold_mps": 0.3, "z_err_m": 0.05, "pos_rms_m": 1.0},
+         params={"metric": "slope_hold", "plane": (0.15, 0.0), "v_mps": 2.0, "steady_from_s": 8.0}, vehicle="f1tenth"),
+    Case("g_wall", "3 m/s 直行撞墙（只有引擎：ST 基准无世界）", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 100,
+         {5: (_c("c1", "velocity", 5, vel_enu_mps=(3.0, 0.0, 0.0)),)}, boxes=(_GWALL,),
+         expect_status={"c1": (G_, M_, C_)}, expect_contacts={"c1": ("COLLISION_WORLD",)}, tol={"t_crash_s": 0.5, "crash_pos_m": 0.5},
+         params={"metric": "contact_crash", "oracle": False}, vehicle="f1tenth"),
+    Case("g_speed_step_podcar", "OpenPodcar 级：0 → 3 m/s → 停车（a_max 1.2 m/s²，刹车 2.5）", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 200,
+         {5: (_c("c1", "velocity", 5, vel_enu_mps=(3.0, 0.0, 0.0)),), 120: (_c("c1", "velocity", 120, vel_enu_mps=(0.0, 0.0, 0.0)),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"rise_s": 0.5, "overshoot_pct": 10.0, "pos_rms_m": 1.0},
+         params={"metric": "velocity_step", "step_tick": 5, "v_mps": 3.0, "until_tick": 120}, vehicle="podcar"),
+    Case("g_waypoints_osr", "JPL 漫游车级：20 m 方形路线，1.2 m/s", {"c1": ((0.0, 0.0, 0.0), 0.0)}, 900,
+         {5: (_c("c1", "follow_path", 5, path_enu_m=_GSQ, speed_mps=1.2),)},
+         expect_status={"c1": (G_, M_, G_)}, tol={"pos_rms_m": 1.5, "arrival_s_per_100m": 2.0},
+         params={"metric": "waypoints", "start_tick": 5, "path": _GSQ.tolist()}, vehicle="osr"),
+)
 
 
 # ---------------------------------------------------------------------------------------------------------------- 运行
@@ -435,8 +495,8 @@ def run_l2(case: Case) -> CaseRun:
     """The unified L2 engine (`awr.phys.l2.L2Tier`) on the same cases: same commands, reference tracker, BoxWorld and wind."""
     from awr.phys.l2 import L2Tier
 
-    tier = L2Tier(case.uavs, dict(case.spawn), case.world(), grounded=list(case.grounded), vehicles=dict.fromkeys(case.uavs, VEHICLE),
-                  tick_ms=TICK_MS, history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None)
+    tier = L2Tier(case.uavs, dict(case.spawn), case.world(), grounded=list(case.grounded), vehicles=dict.fromkeys(case.uavs, case.vehicle),
+                  tick_ms=TICK_MS, history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None, ground=case.ground())
     pre = None
     if case.wind is not None:
         wind = ConstWind(*case.wind)
@@ -446,7 +506,17 @@ def run_l2(case: Case) -> CaseRun:
     return run_case(case, tier, pre_tick=pre)
 
 
-RUNNERS = {"fast": run_fast, "l2": run_l2}
+def run_st(case: Case) -> CaseRun:
+    """The CommonRoad single-track oracle (`awr.phys.l2.st_oracle`) on the ground cases: same commands and tracker, the
+    published ST equations with RK4 instead of the engine's rigid body (no world: cases with boxes are engine-only)."""
+    from awr.phys.l2.st_oracle import STOracleTier
+
+    tier = STOracleTier(case.uavs, dict(case.spawn), None, vehicles=dict.fromkeys(case.uavs, case.vehicle), tick_ms=TICK_MS,
+                        history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None, ground=case.ground())
+    return run_case(case, tier)
+
+
+RUNNERS = {"fast": run_fast, "l2": run_l2, "st": run_st}
 
 
 def compose_case_sdf(case: Case, endpoint: str, *, uavs_z: Mapping[str, float] | None = None, field_wind: bool = False) -> str:
@@ -771,7 +841,8 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
     p = case.params
     u0 = case.uavs[0]
     s = run.state[u0]
-    if case.id == "takeoff_land":
+    kind = case.metric
+    if kind == "takeoff_land":
         z_goal = s[0, 2] + p["alt_m"]
         t_to = p["takeoff_tick"] * TICK_MS / 1000
         out["t_reach_s"] = (lambda x: None if x is None else x - t_to)(_first_t(t, (t >= t_to) & (s[:, 2] >= z_goal - 0.3)))
@@ -788,25 +859,25 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         else:
             out["vz_touchdown_mps"] = None
         out["z_rest_m"] = float(s[-1, 2])
-    elif case.id == "hover":
+    elif kind == "hover":
         out["drift_max_m"] = float(np.max(np.linalg.norm(s[:, 0:3] - s[0, 0:3], axis=1)))
         out["tilt_mean_deg"] = float(np.mean(_tilt_deg(s)))
-    elif case.id == "velocity_step":
+    elif kind == "velocity_step":
         t0 = p["step_tick"] * TICK_MS / 1000
         win = t < p["until_tick"] * TICK_MS / 1000
         out["rise_s"], out["overshoot_pct"] = _rise(t[win], s[win, 7], t0, p["v_mps"])
         out["onset_s"] = _onset(t, s, t0)
-    elif case.id == "velocity_limit":
+    elif kind == "velocity_limit":
         tail = t >= t[-1] - 2.0
         out["v_steady_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
         out["v_max_mps"] = float(np.max(np.linalg.norm(s[:, 7:9], axis=1)))
-    elif case.id == "yaw_step":
+    elif kind == "yaw_step":
         t0 = p["step_tick"] * TICK_MS / 1000
         wz = s[:, 12]
         t90 = _first_t(t, (t >= t0) & (wz >= 0.9 * p["yaw_rate_rps"]))
         out["t90_s"] = None if t90 is None else t90 - t0
         out["yaw_rate_end_rps"] = float(np.mean(wz[t >= t[-1] - 1.0]))
-    elif case.id == "waypoints":
+    elif kind == "waypoints":
         path = np.asarray(p["path"], np.float64)
         t0 = p["start_tick"] * TICK_MS / 1000
         arr, ta, start = [], t0, s[0, 0:3]
@@ -820,7 +891,7 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         legs = np.linalg.norm(np.diff(np.vstack([start, path]), axis=0), axis=1)
         out["path_m"] = np.cumsum(legs).tolist()
         out["onset_s"] = _onset(t, s, t0)
-    elif case.id == "orbit":
+    elif kind == "orbit":
         c = np.asarray(p["center"], np.float64)
         t0 = p["start_tick"] * TICK_MS / 1000
         m = t >= t0
@@ -830,17 +901,32 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         out["radius_rms_m"] = float(np.sqrt(np.mean((r - p["radius_m"]) ** 2)))
         out["path_m"] = 2 * math.pi * p["radius_m"]
         out["onset_s"] = _onset(t, s, t0)
-    elif case.id == "contact_crash":
+    elif kind == "contact_crash":
         for u in case.uavs:
             ev = [x for x in run.contacts if x["uav"] == u]
             out[f"{u}.t_crash_s"] = ev[0]["t_ns"] / NS if ev else None
             out[f"{u}.crash_pos_m"] = ev[0]["pos_enu_m"] if ev else None
             out[f"{u}.crash_kind"] = ev[0]["kind"] if ev else None
-    elif case.id == "wind_hover":
+    elif kind == "wind_hover":
         tail = t >= p["steady_from_s"]
         out["tilt_deg"] = float(np.mean(_tilt_deg(s[tail])))
         out["offset_steady_m"] = float(np.mean(np.linalg.norm(s[tail, 0:3] - s[0, 0:3], axis=1)))
         out["dev_max_m"] = float(np.max(np.linalg.norm(s[:, 0:3] - s[0, 0:3], axis=1)))
+    elif kind == "goto_stop":
+        tgt = np.asarray(p["target"], np.float64)
+        t0 = p["start_tick"] * TICK_MS / 1000
+        d = np.linalg.norm(s[:, 0:2] - tgt, axis=1)
+        out["t_arrive_s"] = (lambda x: None if x is None else x - t0)(_first_t(t, (t >= t0) & (d < ARRIVE_M)))
+        out["rest_err_m"] = float(d[-1])
+        out["v_end_mps"] = float(np.linalg.norm(s[-1, 7:9]))
+        out["onset_s"] = _onset(t, s, t0)
+    elif kind == "slope_hold":
+        tail = t >= p["steady_from_s"]
+        out["v_hold_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
+        gx, gy = p["plane"]
+        off = s[:, 2] - (gx * s[:, 0] + gy * s[:, 1])
+        out["z_err_m"] = float(np.max(np.abs(off - off[0])))
+        out["tilt_deg"] = float(np.mean(_tilt_deg(s[tail])))
     return out
 
 
@@ -903,15 +989,18 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
     pos_rms = {u: float(np.sqrt(np.mean(np.sum((fast.state[u][:, 0:3] - real.state[u][:, 0:3]) ** 2, axis=1)))) for u in case.uavs}
     if "pos_rms_m" in tol:
         diffs["pos_rms_m"] = max(pos_rms.values())
-    for k in ("t_reach_s", "t_touchdown_s", "vz_touchdown_mps", "rise_s", "t90_s", "tilt_deg", "radius_rms_m", "v_steady_mps"):
+    for k in ("t_reach_s", "t_touchdown_s", "vz_touchdown_mps", "rise_s", "t90_s", "tilt_deg", "radius_rms_m", "v_steady_mps", "t_arrive_s",
+              "v_hold_mps"):
         if k in tol:
             diffs[k] = _diff(ma.get(k), mb.get(k))
     if "overshoot_pct" in tol:
         diffs["overshoot_pct"] = _diff(ma.get("overshoot_pct"), mb.get("overshoot_pct"))
-    if "drift_max_m" in tol:
-        diffs["drift_max_m"] = max(ma["drift_max_m"], mb["drift_max_m"])          # 两档各自的悬停漂移上界
+    for k in ("drift_max_m", "rest_err_m", "z_err_m"):
+        if k in tol:
+            diffs[k] = max(ma[k], mb[k])                                            # 两档各自的上界（悬停漂移、停车误差、地形跟随）
+    kind = case.metric
     if "arrival_s_per_100m" in tol:
-        if case.id == "waypoints":
+        if kind == "waypoints":
             aa, ab, pm = ma["arrival_s"], mb["arrival_s"], ma["path_m"]
             if len(aa) == len(ab) == len(pm) and None not in aa and None not in ab:
                 diffs["arrival_s_per_100m"] = max(abs(x - y) / (d / 100.0) for x, y, d in zip(aa, ab, pm, strict=True))
@@ -920,7 +1009,7 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
         else:
             d = _diff(ma.get("t_turn_s"), mb.get("t_turn_s"))
             diffs["arrival_s_per_100m"] = None if d is None else d / (ma["path_m"] / 100.0)
-    if case.id == "contact_crash":
+    if kind == "contact_crash":
         tc, pc = [], []
         for u in case.uavs:
             tc.append(_diff(ma[f"{u}.t_crash_s"], mb[f"{u}.t_crash_s"]))
@@ -930,7 +1019,7 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
         diffs["t_crash_s"] = None if None in tc else max(tc)
         diffs["crash_pos_m"] = None if None in pc else max(pc)
     within = {k: (v is not None and v <= tol[k]) for k, v in diffs.items()}
-    if case.id == "velocity_limit":
+    if kind == "velocity_limit":
         cap = case.params["v_cap_mps"] + case.params["cap_margin_mps"]
         ok_cap = ma["v_max_mps"] <= cap and mb["v_max_mps"] <= cap
         iface["limit_cap"] = {"cap_mps": cap, f"{la}_max_mps": ma["v_max_mps"], f"{lb}_max_mps": mb["v_max_mps"], "pass": ok_cap}
@@ -977,20 +1066,25 @@ def build_report(cases: Sequence[dict], *, sampling: dict | None = None, m25: di
 
 
 # ---------------------------------------------------------------------------------------------------------------- CLI
-def _cases(sel: str | None) -> list[Case]:
+SETS = {"air": CASES, "ground": GROUND_CASES}
+
+
+def _cases(sel: str | None, set_: str = "air") -> list[Case]:
+    pool = SETS[set_]
     if not sel:
-        return list(CASES)
+        return list(pool)
     want = set(sel.split(","))
-    return [c for c in CASES if c.id in want]
+    return [c for c in pool if c.id in want]
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m awr.phys.tier_compare")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--tier", choices=("fast", "l2", "realistic"), required=True)
+    r.add_argument("--tier", choices=("fast", "l2", "st", "realistic"), required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--cases")
+    r.add_argument("--set", default="air", choices=tuple(SETS), help="case set: air (x500, Fast / L2 / gz) or ground (L2 / ST oracle)")
     r.add_argument("--launcher", default="local")
     r.add_argument("--image", default="d3-gz:dev")
     m = sub.add_parser("m25")
@@ -1001,16 +1095,20 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--dz", type=float, default=0.0)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
-    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2")
+    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2 or l2,st")
+    p.add_argument("--set", default="air", choices=tuple(SETS))
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if a.cmd == "run":
-        for c in _cases(a.cases):
+        for c in _cases(a.cases, a.set):
+            if a.tier == "st" and c.params.get("oracle") is False:
+                print(f"[tier_compare] {c.id} {a.tier}: engine-only case, skipped", flush=True)
+                continue
             run = RUNNERS[a.tier](c) if a.tier in RUNNERS else run_realistic(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
             run.save(out)
             print(f"[tier_compare] {c.id} {a.tier}: {run.wall_s} s", flush=True)
-        if a.tier != "l2" and (not a.cases or REF_CASE.id in a.cases.split(",")):
+        if a.set == "air" and a.tier not in ("l2", "st") and (not a.cases or REF_CASE.id in a.cases.split(",")):
             if a.tier == "fast":
                 ref = run_fast(REF_CASE)
                 ref.save(out)
@@ -1036,15 +1134,23 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     cases = []
     ta, tb = (x.strip() for x in a.tiers.split(","))
-    meta: dict = {"tiers": [ta, tb]}
-    for c in CASES:
+    meta: dict = {"tiers": [ta, tb], "case_set": a.set}
+    if a.set == "ground":
+        meta["vehicle"] = sorted({c.vehicle for c in GROUND_CASES})
+    skipped = []
+    for c in SETS[a.set]:
+        if not all((out / f"{c.id}.{t}.json").is_file() for t in (ta, tb)):
+            skipped.append(c.id)                                                   # engine-only case (no oracle run)
+            continue
         fa, re_ = CaseRun.load(out, c.id, ta), CaseRun.load(out, c.id, tb)
         cases.append(compare_case(c, fa, re_, (ta, tb)))
         meta.setdefault("kernel", fa.info.get("kernel"))
         meta.setdefault(tb, {k: re_.info.get(k) for k in ("gz_sim_version", "plugin_build", "engine", "kernel")})
-    m25 = json.loads((out / "m25.json").read_text(encoding="utf-8")) if (out / "m25.json").is_file() else {}
+    if skipped:
+        meta["skipped"] = skipped
+    m25 = json.loads((out / "m25.json").read_text(encoding="utf-8")) if (out / "m25.json").is_file() and a.set == "air" else {}
     doc = build_report(cases, sampling=m25.get("sampling"), m25=m25.get("m25_bytewise"), meta=meta)
-    name = "tier_compare.json" if (ta, tb) == ("fast", "realistic") else f"tier_compare.{ta}-{tb}.json"
+    name = "tier_compare.json" if (ta, tb, a.set) == ("fast", "realistic", "air") else f"tier_compare.{a.set + '.' if a.set != 'air' else ''}{ta}-{tb}.json"
     (out / name).write_text(json.dumps(doc, indent=1, ensure_ascii=False, default=_json_default) + "\n", encoding="utf-8")
     print(json.dumps(doc["summary"]), flush=True)
     return 0
