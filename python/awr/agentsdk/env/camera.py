@@ -15,6 +15,8 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
+from awr.sim.sensors import servo as SV
+
 __all__ = ["CAMERA_OVERRIDE_KEYS", "HFOV_RANGE_DEG", "CameraModel", "Gimbal", "cam_axes", "project"]
 
 CAMERA_OVERRIDE_KEYS = frozenset({"hfov_deg"})      # L1 标称相机可覆盖的键（ADR-217）
@@ -33,6 +35,10 @@ class CameraModel:
     rate_max_dps: float = 90.0
     mount_t_bs_m: tuple[float, float, float] = (0.12, 0.0, -0.08)
     model_ref: str = "d4d_eo1080@1"
+    # 伺服档（awr.sim.sensors.servo）：l1 限速逼近（缺省，与以前相同）；l2 二阶伺服（度/s²、秒）
+    servo_tier: str = "l1"
+    acc_max_dps2: float = SV.L2_DEFAULTS["acc_max_deg_s2"]
+    tau_s: float = SV.L2_DEFAULTS["tau_s"]
 
     @property
     def fx(self) -> float:
@@ -77,6 +83,8 @@ class Gimbal:
     cmd_pitch_deg: float = -30.0
     cmd_yaw_deg: float = 0.0
     cam: CameraModel = field(default_factory=CameraModel)
+    omega_pitch_dps: float = 0.0  # l2 伺服档的角速度状态
+    omega_yaw_dps: float = 0.0
 
     def command(self, pitch_deg: float, yaw_deg: float) -> bool:
         """→ 是否被限幅。"""
@@ -89,9 +97,15 @@ class Gimbal:
         return p != pitch_deg or yc != y
 
     def slew(self, dt_s: float) -> None:
-        m = self.cam.rate_max_dps * dt_s
-        self.pitch_deg += min(max(self.cmd_pitch_deg - self.pitch_deg, -m), m)
-        self.yaw_deg += min(max(self.cmd_yaw_deg - self.yaw_deg, -m), m)
+        c = self.cam
+        if c.servo_tier == "l2":
+            self.pitch_deg, self.omega_pitch_dps = SV.step_l2(self.pitch_deg, self.omega_pitch_dps, self.cmd_pitch_deg,
+                                                              c.rate_max_dps, c.acc_max_dps2, c.tau_s, dt_s)
+            self.yaw_deg, self.omega_yaw_dps = SV.step_l2(self.yaw_deg, self.omega_yaw_dps, self.cmd_yaw_deg,
+                                                          c.rate_max_dps, c.acc_max_dps2, c.tau_s, dt_s)
+            return
+        self.pitch_deg = SV.step_l1(self.pitch_deg, self.cmd_pitch_deg, c.rate_max_dps, dt_s)
+        self.yaw_deg = SV.step_l1(self.yaw_deg, self.cmd_yaw_deg, c.rate_max_dps, dt_s)
 
 
 def cam_axes(yaw_body_rad: float, pitch_deg: float, yaw_rel_deg: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

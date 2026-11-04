@@ -94,6 +94,8 @@ DEFAULT_RANGE_M = {SensorKind.CAMERA: 300.0, SensorKind.THERMAL: 400.0, SensorKi
 D2_RANGE_M = 1000.0  # eo_zoom、lwir 的视锥绘制长度（本文设定；判据距离由 M19 计算）
 # 缺省云台（M13 §6.5.2：俯仰 [−90°, +30°]、方位 [−150°, +150°]、90°/s，conf D）
 GIMBAL_DEFAULTS = {"rate_max_deg_s": 90.0, "default_mode": "fixed", "default_yaw_deg": 0.0, "default_pitch_deg": -15.0}
+SERVO_TIERS = ("l1", "l2")
+SERVO_L2_DEFAULTS = {"acc_max_deg_s2": 400.0, "tau_s": 0.08}
 SPEC_FOV_TOL_DEG = 0.2  # SN-5
 LAMBDA_VIS_UM = 0.55
 LAMBDA_NIR_UM = 0.85
@@ -135,6 +137,10 @@ class GimbalSpec:
     default_mode: str
     default_az_rad: float
     default_el_rad: float
+    # 伺服档（awr.sim.sensors.servo）：l1 限速逼近（缺省，与以前逐位相同）；l2 二阶伺服（加速度上限、速度环时间常数）
+    servo_tier: str = "l1"
+    acc_max_rad_s2: float = math.inf
+    tau_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -722,9 +728,18 @@ def _gimbal(doc: dict) -> GimbalSpec | None:
     if "default_pitch_deg" not in g:  # 缺省俯仰钳到限位内（eo_zoom 型号文件不给 default_*）
         d["default_pitch_deg"] = min(max(float(d["default_pitch_deg"]), float(d["pitch_min_deg"])), float(d["pitch_max_deg"]))
     r = math.radians
+    servo = d.get("servo") or {}
+    tier = str(servo.get("tier", "l1"))
+    if tier not in SERVO_TIERS:
+        raise SensorSpecError("gimbal.servo", [f"tier must be one of {SERVO_TIERS}, got {tier!r}"])
+    acc = float(servo.get("acc_max_deg_s2", SERVO_L2_DEFAULTS["acc_max_deg_s2"]))
+    tau = float(servo.get("tau_s", SERVO_L2_DEFAULTS["tau_s"]))
+    if tier == "l2" and not (acc > 0 and tau > 0):
+        raise SensorSpecError("gimbal.servo", ["l2 needs acc_max_deg_s2 > 0 and tau_s > 0"])
     return GimbalSpec(r(float(d["yaw_min_deg"])), r(float(d["yaw_max_deg"])), r(float(d["pitch_min_deg"])),
                       r(float(d["pitch_max_deg"])), r(float(d["rate_max_deg_s"])), str(d["default_mode"]),
-                      r(float(d["default_yaw_deg"])), r(float(d["default_pitch_deg"])))
+                      r(float(d["default_yaw_deg"])), r(float(d["default_pitch_deg"])),
+                      servo_tier=tier, acc_max_rad_s2=r(acc) if tier == "l2" else math.inf, tau_s=tau if tier == "l2" else 0.0)
 
 
 def _detector(doc: dict) -> DetectorSpec | None:

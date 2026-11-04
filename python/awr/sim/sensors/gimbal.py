@@ -31,6 +31,7 @@ import numpy as np
 from awr.sim.fleet import kernels_sel as KS
 
 from . import kernels_gimbal as KG
+from . import servo as SV
 from .enums import GimbalMode, PointSrc, SensorKind, SensorState
 from .frames import gimbal_R, quat_to_R, quat_to_R_s
 
@@ -130,6 +131,19 @@ class GimbalBank:
         self.scan = True  # 融合核内枚举动态集（gimbal_step_scan）；False 时先用 numpy 枚举再调 `_step_nb`（对拍用）
         self._tab_key: tuple | None = None
         self._tab: tuple | None = None
+        # l2 伺服档的角速度状态（弧度/秒，按 (slot, 云台列, az|el)）；l1 列恒为 0。不进入 checkpoint：重启后从静止续算。
+        self.omega: np.ndarray | None = None
+
+    def _omega(self) -> np.ndarray:
+        n = self.rt.blk["g_az"].shape[0]
+        if self.omega is None or self.omega.shape[0] != n:
+            self.omega = np.zeros((n, N_COLS, 2))
+        return self.omega
+
+    def _any_l2(self) -> bool:
+        """装配的机型中是否有 l2 伺服档的云台列；有则大机群路径走 numpy（融合核只实现 l1）。"""
+        return any(sp is not None and sp.gimbal is not None and sp.gimbal.servo_tier == "l2"
+                   for rg in self.rt.rig_list if rg is not None for sp in rg.col_specs)
 
     # ------------------------------------------------------------ 参数
     def _cols(self, slot: int, sensor: str | None) -> list[int]:
@@ -280,7 +294,8 @@ class GimbalBank:
     def step(self, S: Any, dt_s: float) -> int:
         b = self.rt.blk
         dyn = b["g_dyn"]
-        if self.use_numba and self.scan:
+        use_numba = self.use_numba and not self._any_l2()
+        if use_numba and self.scan:
             # 扫描版融合核：动态集枚举与逐对推进一次完成（与下面的 np.nonzero 行主序枚举 + `_step_nb` 逐位相同），
             # 对数不超过 SCALAR_MAX 时仍走标量路径（路径只取决于动态集大小，FX2-R3）
             npair = int(KG.count_pairs(dyn, S.active))
@@ -304,7 +319,7 @@ class GimbalBank:
         npair = ri.size
         if npair > SCALAR_MAX:  # 大机群：向量化路径（FX2-R2：免去逐对的 Python 枚举与 spec 查找）
             self.stats["numpy"] += 1
-            if self.use_numba:
+            if use_numba:
                 self._step_nb(S, rows[ri], kk.astype(np.int64), dt_s)
             else:
                 self._step_vec(S, rows, rows[ri], kk.astype(np.int64), ri, dt_s)
@@ -369,11 +384,15 @@ class GimbalBank:
         b["g_lim"][s, k] = lim
         if lim:
             self.stats["limited"] += 1
-        step = g.rate_max_rad_s * dt
         az = float(b["g_az"][s, k])
         el = float(b["g_el"][s, k])
-        az += min(max(az_t - az, -step), step)
-        el += min(max(el_t - el, -step), step)
+        if g.servo_tier == "l2":
+            w = self._omega()
+            az, w[s, k, 0] = SV.step_l2(az, float(w[s, k, 0]), az_t, g.rate_max_rad_s, g.acc_max_rad_s2, g.tau_s, dt)
+            el, w[s, k, 1] = SV.step_l2(el, float(w[s, k, 1]), el_t, g.rate_max_rad_s, g.acc_max_rad_s2, g.tau_s, dt)
+        else:
+            az = SV.step_l1(az, az_t, g.rate_max_rad_s, dt)
+            el = SV.step_l1(el, el_t, g.rate_max_rad_s, dt)
         b["g_az"][s, k] = az
         b["g_el"][s, k] = el
         m = int(b["g_mode"][s, k])
@@ -403,6 +422,9 @@ class GimbalBank:
         el_min = np.array([g.el_min_rad for g in G])
         el_max = np.array([g.el_max_rad for g in G])
         rate = np.array([g.rate_max_rad_s for g in G])
+        l2 = np.array([g.servo_tier == "l2" for g in G])
+        acc = np.array([g.acc_max_rad_s2 for g in G])
+        tau = np.array([g.tau_s if g.servo_tier == "l2" else 1.0 for g in G])
         mode = b["g_mode"][S_, K_].astype(np.int64)
         az = b["g_az"][S_, K_].copy()
         el = b["g_el"][S_, K_].copy()
@@ -440,9 +462,7 @@ class GimbalBank:
         el_c = np.minimum(np.maximum(el_t, el_min), el_max)
         lim = (az_c != az_t) | (el_c != el_t)
         self.stats["limited"] += int(lim.sum())
-        step = rate * dt
-        az = az + np.minimum(np.maximum(az_c - az, -step), step)
-        el = el + np.minimum(np.maximum(el_c - el, -step), step)
+        az, el = self._advance(S_, K_, az, el, az_c, el_c, rate, l2, acc, tau, dt)
         b["g_lim"][S_, K_] = lim
         done = ~la & (np.abs(az_c - az) <= EXIT_EPS) & (np.abs(el_c - el) <= EXIT_EPS)
         az[done] = az_c[done]
@@ -450,6 +470,22 @@ class GimbalBank:
         b["g_az"][S_, K_] = az
         b["g_el"][S_, K_] = el
         b["g_dyn"][S_[done], K_[done]] = False
+
+    def _advance(self, S_, K_, az, el, az_c, el_c, rate, l2, acc, tau, dt):
+        """按伺服档推进（向量路径）：l1 列限速逼近，l2 列二阶伺服（角速度状态在 self.omega）。"""
+        az1 = SV.step_l1(az, az_c, rate, dt)
+        el1 = SV.step_l1(el, el_c, rate, dt)
+        if not l2.any():
+            return az1, el1
+        w = self._omega()
+        i = np.flatnonzero(l2)
+        az2, waz = SV.step_l2(az[i], w[S_[i], K_[i], 0], az_c[i], rate[i], acc[i], tau[i], dt)
+        el2, wel = SV.step_l2(el[i], w[S_[i], K_[i], 1], el_c[i], rate[i], acc[i], tau[i], dt)
+        w[S_[i], K_[i], 0] = waz
+        w[S_[i], K_[i], 1] = wel
+        az1[i] = az2
+        el1[i] = el2
+        return az1, el1
 
     def _param_table(self) -> tuple:
         """按 (机型 rig, 云台列) 展开的参数表（行号 = rig·N_COLS + 列）：有无云台、限位与限速、挂载平移与旋转。
@@ -506,6 +542,9 @@ class GimbalBank:
         el_max = np.empty(n)
         rate = np.empty(n)
         dflt_el = np.empty(n)
+        l2 = np.zeros(n, np.bool_)
+        acc = np.full(n, np.inf)
+        tau = np.ones(n)
         mt = np.empty((n, 3))
         MR = np.empty((n, 3, 3))
         ok = np.zeros(n, np.bool_)
@@ -520,6 +559,8 @@ class GimbalBank:
             ok[m] = True
             az_min[m], az_max[m], el_min[m], el_max[m] = g.az_min_rad, g.az_max_rad, g.el_min_rad, g.el_max_rad
             rate[m], dflt_el[m] = g.rate_max_rad_s, g.default_el_rad
+            if g.servo_tier == "l2":
+                l2[m], acc[m], tau[m] = True, g.acc_max_rad_s2, g.tau_s
             mt[m] = sp.mount_t
             MR[m] = sp.mount_R
         if not ok.all():
@@ -527,6 +568,7 @@ class GimbalBank:
             b["g_dyn"][S_[bad], K_[bad]] = False
             S_, K_, ri = S_[ok], K_[ok], ri[ok]
             az_min, az_max, el_min, el_max, rate, dflt_el = (a[ok] for a in (az_min, az_max, el_min, el_max, rate, dflt_el))
+            l2, acc, tau = l2[ok], acc[ok], tau[ok]
             mt, MR = mt[ok], MR[ok]
             if S_.size == 0:
                 return
@@ -564,9 +606,7 @@ class GimbalBank:
         el_c = np.minimum(np.maximum(el_t, el_min), el_max)
         lim = (az_c != az_t) | (el_c != el_t)
         self.stats["limited"] += int(lim.sum())
-        step = rate * dt
-        az = az + np.minimum(np.maximum(az_c - az, -step), step)
-        el = el + np.minimum(np.maximum(el_c - el, -step), step)
+        az, el = self._advance(S_, K_, az, el, az_c, el_c, rate, l2, acc, tau, dt)
         b["g_lim"][S_, K_] = lim
         done = ~la & (np.abs(az_c - az) <= EXIT_EPS) & (np.abs(el_c - el) <= EXIT_EPS)
         az[done] = az_c[done]
