@@ -10,8 +10,9 @@ tier              meaning
 ================  ==============================================================================================
 ``l0``            replay / kinematic: poses come from a recording or a provider, no dynamics (``Fidelity.L0``)
 ``l1``            PX4-lite cascade at 125 Hz: position → attitude → motor → aero → integrate (``Fidelity.L1``)
-``l2``            realistic: gz-sim lockstep with the PX4 compose (``awr.phys.gz.GzSimBackend``), rate loop,
-                  allocation, rotor lag and aerodynamics inside gz; today only the ``x500_d4d`` model
+``l2``            realistic: the unified L2 engine (``awr.phys.l2``: rotor- or actuator-level actuation, rate loop,
+                  control allocation, rigid body with inertia, aerodynamics) with one domain model per device family;
+                  gz-sim lockstep (``awr.phys.gz``) stays as a cross-check where it has a model (``x500_d4d``)
 ``l3``            software in the loop: the real PX4 / ArduPilot flight stack (``px4_sih`` is the only hook)
 ``fw``            fixed-wing / VTOL fast tier: kinematic flight with energy (``Fidelity.FW``, stage ``fw_kin``)
 ================  ==============================================================================================
@@ -19,7 +20,8 @@ tier              meaning
 and for gimbals the servo tiers ``l1`` (rate-limited) and ``l2`` (second-order servo), see ``awr.sim.sensors.servo``.
 
 ``ladder()`` is what the device page shows; a tier is *available* only when the profile declares it and the code
-implements it. Land and sea devices are listed as planned rows until step 5 adds their profiles.
+implements it (for ``l2``: when the unified engine has a domain model for the device's family). Land and sea devices are
+listed as planned rows until their profiles and domain models land.
 """
 
 from __future__ import annotations
@@ -35,8 +37,8 @@ TIERS = {
     "l0": {"label_zh": "回放 / 运动学", "module": "awr.sim.fleet.stages.kinematic", "flag": "L0"},
     "l1": {"label_zh": "PX4-lite 级联（125 Hz）", "module": "awr.sim.fleet.stages.l1", "flag": "L1"},
     "l2": {
-        "label_zh": "Realistic：gz-sim 锁步（速率环、控制分配、转子滞后、气动在 gz 内）",
-        "module": "awr.phys.gz.backend",
+        "label_zh": "Realistic：统一 L2 引擎（转子 / 执行器级驱动、速率环、控制分配、刚体惯量、气动）；gz-sim 锁步为交叉验证",
+        "module": "awr.phys.l2",
         "flag": "L2",
     },
     "l3": {"label_zh": "SITL（PX4 / ArduPilot）", "module": None, "flag": None},
@@ -47,6 +49,9 @@ DECLARED = {"l0": "l0", "l1": "l1", "sih": "l2", "fw_kin": "fw"}
 GIMBAL_TIERS = {"l1": "限速逼近", "l2": "二阶伺服（加速度上限、速度环时间常数）"}
 # vehicle models the gz Realistic tier has today (awr.phys.tier_compare: "gz 只有 x500_d4d")
 GZ_MODELS = {"x500": "x500_d4d", "x500_sih": "x500_d4d"}
+# domain models of the unified L2 engine, by device family (catalog category); a family without a module has no l2 yet
+L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2.fixedwing", "vtol": "awr.phys.l2.fixedwing",
+              "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}
 
 PLANNED = [
     {
@@ -55,7 +60,7 @@ PLANNED = [
         "display_name_zh": "轮式地面车（JPL 开源漫游车级）",
         "category": "ugv",
         "size_class": "small",
-        "note": "第 5 步：L1 运动学 + gz L2；参考 JPL Open Source Rover",
+        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型（自行车 + 轮胎力）；参考 JPL Open Source Rover",
     },
     {
         "id": "ugv_f1tenth",
@@ -63,7 +68,7 @@ PLANNED = [
         "display_name_zh": "1/10 自动驾驶车（F1TENTH 级）",
         "category": "ugv",
         "size_class": "small",
-        "note": "第 5 步：L1 自行车模型 + gz L2；参考 F1TENTH",
+        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型；参考 F1TENTH",
     },
     {
         "id": "ugv_podcar",
@@ -71,7 +76,7 @@ PLANNED = [
         "display_name_zh": "小型乘用车（OpenPodcar 级）",
         "category": "ugv",
         "size_class": "medium",
-        "note": "第 5 步：L1 自行车模型；参考 OpenPodcar 2",
+        "note": "第 5 步：机型包 + 统一引擎 ugv 域模型；参考 OpenPodcar 2",
     },
     {
         "id": "usv_small",
@@ -79,7 +84,7 @@ PLANNED = [
         "display_name_zh": "小型无人艇（BlueBoat 级）",
         "category": "usv",
         "size_class": "small",
-        "note": "第 5 步：L1 三自由度艇模型 + gz L2；参考 BlueBoat",
+        "note": "第 5 步：机型包 + 统一引擎 usv 域模型（Fossen 三自由度）；参考 BlueBoat",
     },
     {
         "id": "usv_medium",
@@ -87,13 +92,33 @@ PLANNED = [
         "display_name_zh": "中型无人艇（NAC-USV 级）",
         "category": "usv",
         "size_class": "medium",
-        "note": "第 5 步：L1 三自由度艇模型；参考 NAC-USV",
+        "note": "第 5 步：机型包 + 统一引擎 usv 域模型；参考 NAC-USV",
     },
 ]
 
 
 def _val(d):
     return d.get("value") if isinstance(d, dict) and "value" in d else d
+
+
+def _domain(category, frame_type) -> str:
+    """Device family of a catalog row for the L2 domain models: multirotor, fixed_wing, vtol, ugv, usv."""
+    if category in L2_DOMAINS:
+        return str(category)
+    if frame_type in ("quad_x", "hex_x"):
+        return "multirotor"
+    if frame_type == "fixed_wing":
+        return "fixed_wing"
+    if frame_type and str(frame_type).startswith("vtol"):
+        return "vtol"
+    return str(category or "unknown")
+
+
+def _planned_tier(tier: str, impl: dict, category: str) -> dict:
+    row = {"declared": False, "implemented": impl[tier]["implemented"], "status": "无"}
+    if tier == "l2":
+        row.update(domain=category, engine=None, gz_model=None, status=f"无（统一引擎尚无 {category} 模型）")
+    return row
 
 
 def implemented() -> dict[str, dict]:
@@ -103,13 +128,17 @@ def implemented() -> dict[str, dict]:
         mod = t["module"]
         present = bool(mod) and importlib.util.find_spec(mod) is not None
         if tier == "l2":
-            sih = importlib.util.find_spec("awr.sim.backends.px4_sih.adapter") is not None
+            doms = {d: importlib.util.find_spec(m) is not None for d, m in L2_DOMAINS.items()}
+            have = sorted({d for d, ok in doms.items() if ok})
+            gz = importlib.util.find_spec("awr.phys.gz.backend") is not None
             out[tier] = {
                 "implemented": present,
-                "status": "可用（仅 x500，d3-gz 容器）" if present else "无",
-                "detail": "awr.phys.gz.GzSimBackend（gz-sim 锁步，PX4 compose）；gz 模型只有 x500_d4d；"
-                + ("px4_sih 后端是骨架（open 返回 213）" if sih else "无 px4_sih")
-                + "；其他机型第 5 步",
+                "status": f"可用（统一引擎：{'、'.join(have)}）" if present and have else "无",
+                "domains": doms,
+                "gz": gz,
+                "detail": "awr.phys.l2（统一 L2 引擎，CPU，与 Fast 同一指令映射与参考跟踪器）；域模型："
+                + "，".join(f"{d} {'有' if ok else '无'}" for d, ok in doms.items())
+                + ("；gz-sim 锁步交叉验证（d3-gz 容器，模型 x500_d4d）" if gz else "；无 gz"),
             }
         elif tier == "l3":
             out[tier] = {"implemented": False, "status": "无", "detail": "无 SITL 代码；第 5 步经 PX4 / ArduPilot 接入"}
@@ -157,19 +186,25 @@ def ladder(vdir: Path | None = None) -> dict:
     docs = load_vehicle_docs(vdir)
     devices = []
     for pid, (doc, path) in docs.items():
+        cm = cat_by_id.get(pid, {})
+        frame = doc.get("frame") or {}
         fid = doc.get("fidelity") or {}
         declared = {DECLARED.get(x, x) for x in fid.get("supported", [])}
         default = DECLARED.get(fid.get("default"), fid.get("default"))
         tiers = {}
         for tier in TIERS:
             d, i = tier in declared, impl[tier]["implemented"]
-            if tier == "l2":  # the gz tier is chosen by run_spec, not by the profile's fidelity field
-                d = pid in GZ_MODELS
+            if tier == "l2":  # chosen by run_spec, not by the profile's fidelity field: available when the engine has the domain model
+                dom = _domain(cm.get("category", frame.get("type")), frame.get("type"))
+                have = bool(impl["l2"]["domains"].get(dom)) and i
+                gz = pid in GZ_MODELS and bool(impl["l2"].get("gz"))
                 tiers[tier] = {
-                    "declared": d,
+                    "declared": have,
                     "implemented": i,
-                    "gz_model": GZ_MODELS.get(pid),
-                    "status": "可用（gz）" if d and i else "无（gz 无该机型）",
+                    "domain": dom,
+                    "engine": "unified" if have else None,
+                    "gz_model": GZ_MODELS.get(pid) if gz else None,
+                    "status": ("可用（统一引擎 + gz）" if gz else "可用（统一引擎）") if have else f"无（统一引擎尚无 {dom} 模型）",
                 }
                 continue
             tiers[tier] = {
@@ -186,8 +221,6 @@ def ladder(vdir: Path | None = None) -> dict:
                 "schema": sd.get("schema"),
                 "gimbal": _gimbal_of(sd),
             }
-        cm = cat_by_id.get(pid, {})
-        frame = doc.get("frame") or {}
         batt = doc.get("battery") or {}
         devices.append(
             {
@@ -218,7 +251,7 @@ def ladder(vdir: Path | None = None) -> dict:
             "status": "planned",
             "fidelity_declared": [],
             "fidelity_default": None,
-            "tiers": {t: {"declared": False, "implemented": impl[t]["implemented"], "status": "无"} for t in TIERS},
+            "tiers": {t: _planned_tier(t, impl, p["category"]) for t in TIERS},
             "sensors": {},
             "source": None,
         }
@@ -280,6 +313,7 @@ __all__ = [
     "DECLARED",
     "GIMBAL_TIERS",
     "GZ_MODELS",
+    "L2_DOMAINS",
     "PLANNED",
     "SCHEMA",
     "TIERS",

@@ -181,6 +181,11 @@ class BenchEnv:
 
             return FastTier(self.uavs, spawn, self.world, grounded=grounded, vehicles={f.uav: f.vehicle_ref for f in self.spec.fleet},
                             clock_profile=self.spec.clock_profile, tick_ms=TICK_MS, outputs=self._tier_outputs())
+        if self.spec.physics == "l2":
+            from awr.phys.l2 import L2Tier
+
+            return L2Tier(self.uavs, spawn, self.world, grounded=grounded, vehicles={f.uav: f.vehicle_ref for f in self.spec.fleet},
+                          clock_profile=self.spec.clock_profile, tick_ms=TICK_MS, outputs=self._tier_outputs())
         if self.spec.physics == "realistic":
             from awr.phys.adapter import validate_clock
             from awr.phys.fast import check_physics_hz, clock_of
@@ -189,7 +194,7 @@ class BenchEnv:
             validate_clock("realistic", cp, TICK_MS, self._tier_outputs())
             check_physics_hz(cp, self._tier_outputs())
             return _GzTier.create(self.spec, spawn, grounded, self.world)
-        raise ValueError(f"physics {self.spec.physics!r} is not available (kinematic, fast, realistic)")
+        raise ValueError(f"physics {self.spec.physics!r} is not available (kinematic, fast, l2, realistic)")
 
     def _tier_outputs(self) -> tuple[str, ...]:
         """时钟档相容性校验用的输出集合（M24-FR-005）：L2 与 L2-depth 按 `spec.l2` 开关给出 camera、lidar、imu。"""
