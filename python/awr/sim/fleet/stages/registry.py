@@ -226,6 +226,9 @@ class Registry:
     ckpt_exts: dict[str, CheckpointExtSpec] = field(default_factory=dict)
     fleet_update_hooks: list[Callable[..., Any]] = field(default_factory=list)
     setpoint_filters: list[tuple[str | None, Callable[..., Any]]] = field(default_factory=list)
+    # plugin runtimes by plugin name: a runtime lives and dies with the registry it was installed into (never keyed by id(),
+    # which CPython reuses once a registry is collected)
+    plugins: dict[str, Any] = field(default_factory=dict)
 
     def stage_names(self) -> set[str]:
         return {s.name for s in self.stages}

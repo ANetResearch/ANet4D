@@ -32,7 +32,7 @@ __all__ = ["COMMANDS", "QUERIES", "CatalogRuntime", "install", "runtime"]
 log = logging.getLogger("awr.sim.catalog")
 COMMANDS = ("catalog/clone", "catalog/clone_update", "catalog/clone_delete")
 QUERIES = ("catalog/models", "catalog/model", "catalog/nest_compat", "catalog/capabilities")
-_INSTALLED: dict[int, CatalogRuntime] = {}
+_KEY = "catalog"                                     # the runtime lives in registry.plugins of the table it was installed into
 
 
 def _ok(result: Any = None) -> dict:
@@ -207,7 +207,7 @@ def install() -> CatalogRuntime:
     from ..fleet.stages import registry as R
 
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None:
         return rt
     rt = CatalogRuntime()
@@ -219,14 +219,14 @@ def install() -> CatalogRuntime:
         if name not in reg.queries:
             R.register_query(name, fn)
     R.register_fleet_update_hook(rt.fleet_update_hook)
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     return rt
 
 
 def runtime() -> CatalogRuntime | None:
     from ..fleet.stages import registry as R
 
-    return _INSTALLED.get(id(R.registry()))
+    return R.registry().plugins.get(_KEY)
 
 
 install()

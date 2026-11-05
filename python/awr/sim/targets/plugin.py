@@ -26,7 +26,7 @@ from .runtime import TargetRuntime
 __all__ = ["install", "runtime", "uninstall"]
 
 log = logging.getLogger("awr.sim.targets")
-_INSTALLED: dict[int, TargetRuntime] = {}
+_KEY = "targets"                                     # the runtime lives in registry.plugins of the table it was installed into
 ORDER = 170
 HZ = 10.0
 DETAIL_PERIOD_S = 0.5
@@ -41,7 +41,7 @@ def _registry():
 def runtime(create: bool = True) -> TargetRuntime | None:
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None and BLOCK not in (reg.entity_blocks.get("target") or {}):
         rt = None
     if rt is None and create:
@@ -57,7 +57,7 @@ def uninstall() -> None:
     """从当前登记表撤销本插件的全部登记（测试用；sim-core 进程内不调用）。"""
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.pop(id(reg), None)
+    rt = reg.plugins.pop(_KEY, None)
     if rt is None:
         return
     reg.stages[:] = [s for s in reg.stages if s.name != "targets"]
@@ -111,9 +111,9 @@ def _warm_kernels() -> None:
 def install() -> TargetRuntime:
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None and BLOCK in (reg.entity_blocks.get("target") or {}) and "target/add" in reg.commands:
-        return rt   # 同一登记表（id 可能被回收后复用，故再核对登记内容）
+        return rt   # 同一登记表，且登记内容还在（测试可能撤销过）
     _warm_kernels()
     rt = TargetRuntime()
     R.register_entity_block("target", BLOCK, OWNER, dict(FIELDS))
@@ -226,7 +226,7 @@ def install() -> TargetRuntime:
     rt.guard = guard  # type: ignore[attr-defined]
     R.register_setpoint_filter(guard, owner=OWNER)
     R.register_slow_task("m18.detail", rt.publish_detail, period_sim_s=DETAIL_PERIOD_S, budget_us=800)
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     return rt
 
 
