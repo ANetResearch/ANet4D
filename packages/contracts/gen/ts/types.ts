@@ -571,6 +571,31 @@ export type WorldCommonSha256 = string
 export type WorldCommonRelHref = string
 /**
  * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1SkillCommand".
+ */
+export type DecisionV1SkillCommand =
+  DecisionV1Goto | DecisionV1Sweep | DecisionV1Orbit | DecisionV1Follow | DecisionV1LookAt | DecisionV1Hold | DecisionV1Rtl | DecisionV1Zoom
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1UavId".
+ */
+export type DecisionV1UavId = string
+/**
+ * Height above the terrain in m; the executor keeps a 2 m physical floor, the task's altitude envelope is scored, not enforced
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Agl".
+ */
+export type DecisionV1Agl = number
+/**
+ * m/s, clamped by the executor to 1 .. cruise (8 m/s)
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Speed".
+ */
+export type DecisionV1Speed = number
+/**
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
  * via the `definition` "EntityClassesV1Spread".
  */
 export type EntityClassesV1Spread =
@@ -4392,6 +4417,179 @@ export interface DatasetIndexV1File {
   path: string
   bytes: number
   sha256: string
+}
+/**
+ * Commander decision (drone4d.bench.decision.v1). One decision of an external commander (a vision-language model, a scripted plan or an HTTP agent) for the whole fleet: skill commands from the closed vocabulary, task-layer reports and the done declaration (engine plan step 6, ADR-227). The Env side expands every skill into per-tick bench/act.v1 nav and gimbal commands (awr.agentsdk.skills). Report objects are defined by the task layer (the mission types of the benchmark); here they are only objects. Every number is finite: NaN and infinity are rejected. The HTTP gateway (awr.agentsdk.gateway) answers 400 with the rejection text of awr.agentsdk.skills.validate_decision.
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1".
+ */
+export interface DecisionV1 {
+  schema?: 'drone4d.bench.decision.v1'
+  /**
+   * The commander's brief reasoning; recorded, never executed
+   */
+  thought?: string
+  commands?: DecisionV1SkillCommand[]
+  /**
+   * Task-layer reports (found, track, count, plate, event ...); their fields are the task layer's contract
+   */
+  reports?: {}[]
+  /**
+   * Ends the episode at once; commands sent with it have no effect
+   */
+  done?: boolean
+  summary?: string
+  /**
+   * Billing records of the model calls that produced this decision (task-layer accounting); not part of the vocabulary
+   *
+   * @maxItems 1000
+   */
+  _usage?: {}[]
+}
+/**
+ * fly to a point at the given height above ground and keep the camera on it after arrival
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Goto".
+ */
+export interface DecisionV1Goto {
+  uav: DecisionV1UavId
+  skill: 'goto'
+  params: {
+    x: number
+    y: number
+    agl?: DecisionV1Agl
+    speed?: DecisionV1Speed
+  }
+}
+/**
+ * lawnmower coverage of an area, camera straight down
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Sweep".
+ */
+export interface DecisionV1Sweep {
+  uav: DecisionV1UavId
+  skill: 'sweep'
+  params: {
+    [k: string]: unknown
+  } & {
+    /**
+     * @minItems 3
+     */
+    polygon?: [
+      [number, number, ...number[]],
+      [number, number, ...number[]],
+      [number, number, ...number[]],
+      ...[number, number, ...number[]][]
+    ]
+    x?: number
+    y?: number
+    /**
+     * Side of the square around (x, y) when no polygon is given (default 150 m)
+     */
+    size?: number
+    agl?: DecisionV1Agl
+    /**
+     * Lane spacing in m (default 80 % of the ground footprint height at that altitude, at least 10 m)
+     */
+    lane?: number
+    speed?: DecisionV1Speed
+  }
+}
+/**
+ * circle a point with the camera on it
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Orbit".
+ */
+export interface DecisionV1Orbit {
+  uav: DecisionV1UavId
+  skill: 'orbit'
+  params: {
+    x: number
+    y: number
+    /**
+     * m, default 50
+     */
+    radius?: number
+    /**
+     * s per revolution, default 90
+     */
+    period?: number
+    agl?: DecisionV1Agl
+    speed?: DecisionV1Speed
+  }
+}
+/**
+ * fly over a (moving) ground point and keep the camera on it; resend with the new position each step
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Follow".
+ */
+export interface DecisionV1Follow {
+  uav: DecisionV1UavId
+  skill: 'follow'
+  params: {
+    x: number
+    y: number
+    agl?: DecisionV1Agl
+    /**
+     * Stop this many m short of the point on the approach side for an oblique view (default 0)
+     */
+    standoff?: number
+    speed?: DecisionV1Speed
+  }
+}
+/**
+ * aim the camera at a ground point without changing the flight
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1LookAt".
+ */
+export interface DecisionV1LookAt {
+  uav: DecisionV1UavId
+  skill: 'look_at'
+  params: {
+    x: number
+    y: number
+  }
+}
+/**
+ * hover in place
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Hold".
+ */
+export interface DecisionV1Hold {
+  uav: DecisionV1UavId
+  skill: 'hold'
+  params?: {}
+}
+/**
+ * return to the home pad and land; ends the drone's part of the mission
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Rtl".
+ */
+export interface DecisionV1Rtl {
+  uav: DecisionV1UavId
+  skill: 'rtl'
+  params?: {}
+}
+/**
+ * optical zoom of that drone's camera; only when the run has an optical lens
+ *
+ * This interface was referenced by `AwrContracts`'s JSON-Schema
+ * via the `definition` "DecisionV1Zoom".
+ */
+export interface DecisionV1Zoom {
+  uav: DecisionV1UavId
+  skill: 'zoom'
+  params: {
+    factor: number
+  }
 }
 /**
  * awr.sensor.detection.v1. Detection record of the session detection ring (8192, AWR-17 §17.6.4; SB-39). Imaging sensors give the target id; radar and acoustic give track_id or bearing_id and target null.
