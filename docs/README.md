@@ -139,7 +139,7 @@ flowchart TD
 
 工作包 M00（工程骨架与契约）不单独成文，其要求分布在 16、17、18、19 号文档（[AWR-03 §6.1、ADR-050](03-设计基线与决策记录.md)）。D2 增补节已写于 [14 §20](14-UI交互设计PRD.md)、[17 §17](17-接口与实时协议规范.md) 与 M08、M10、M11、M13、M15 的 §15；D2.1 增补节见 [AWR-04 §15](04-D2-设计增补与决策记录.md)、14 §20.26、17 §17.20、M17 §14、M18-M19 §15、M11 与 M15 的 §15.12；其余说明书与模块的 D2 增补节待写（[AWR-04 §1.3](04-D2-设计增补与决策记录.md)）。D3 增补节已写于 [14 §21](14-UI交互设计PRD.md)（事件沙盘工作区）、[17 §18](17-接口与实时协议规范.md)（bench-api、Agent 线协议、原因码 600–698 全表）与 [20 §15](20-机型与传感器目录.md)（长量程型号、D3 相机与噪声参数单一真源）；其余说明书与受影响模块的 D3 增补节待写（[AWR-05 §1.3](05-D3-设计增补与决策记录.md)）。
 
-场景适配目标引擎的增量设计与实施边界见 [场景适配目标引擎](design/scene-target-engine.zh-CN.md)。目标生活引擎 `awr.life`（居民、车辆、活动与交通的完整引擎，2026-11-02 自 CHIMERA 基准移植）的说明、运行方式与设计笔记见 [docs/life](life/README.md)，移植报告见 [life-engine-v1](impl/life-engine-v1.zh-CN.md)。当前实验实现与 v0.2.0 的对照见 [目标系统升级说明](impl/scene-target-system.zh-CN.md)，synthcity 部署验收与限制见 [验收报告](audit/target-life/REVIEW.zh-CN.md)。
+场景适配目标引擎的增量设计与实施边界见 [场景适配目标引擎](design/scene-target-engine.zh-CN.md)。目标生活引擎 `awr.life`（居民、车辆、活动与交通的完整引擎，2026-11-02 自 CHIMERA 基准移植）的说明、运行方式与设计笔记见 [docs/life](life/README.md)，移植报告见 [life-engine-v1](impl/life-engine-v1.zh-CN.md)。研究者接口 ⑤ 的动作侧——技能词表、机队执行与外部智能体的指挥网关（`awr.agentsdk.skills`、`awr.agentsdk.gateway`，2026-11-05 自 CHIMERA 移入，ADR-227）见 [技能词表与指挥网关](sdk/skills-gateway.zh-CN.md)。当前实验实现与 v0.2.0 的对照见 [目标系统升级说明](impl/scene-target-system.zh-CN.md)，synthcity 部署验收与限制见 [验收报告](audit/target-life/REVIEW.zh-CN.md)。
 
 ### 1.3 常用"定义方"速查
 

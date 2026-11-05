@@ -213,6 +213,25 @@ __all__ = [
     "DatasetIndexV1File",
     "DatasetIndexV1Runs",
     "DatasetIndexV1RunsMetrics",
+    "DecisionV1",
+    "DecisionV1Agl",
+    "DecisionV1Follow",
+    "DecisionV1FollowParams",
+    "DecisionV1Goto",
+    "DecisionV1GotoParams",
+    "DecisionV1Hold",
+    "DecisionV1LookAt",
+    "DecisionV1LookAtParams",
+    "DecisionV1Orbit",
+    "DecisionV1OrbitParams",
+    "DecisionV1Rtl",
+    "DecisionV1SkillCommand",
+    "DecisionV1Speed",
+    "DecisionV1Sweep",
+    "DecisionV1SweepParams",
+    "DecisionV1UavId",
+    "DecisionV1Zoom",
+    "DecisionV1ZoomParams",
     "Detection",
     "DetectionPage",
     "Effect",
@@ -1391,6 +1410,22 @@ type BusEventKnownKinds = Literal["sim.started", "sim.reset", "sim.stopped", "si
 
 # rt/commands.schema.json#/$defs/category
 type CommandsCategory = Literal["nav", "nav_setup", "nav_stream", "safety", "safety_light", "safety_lock", "mission", "task_or_unlock", "setup", "call_control", "lease", "batch", "clock", "env", "query", "seat", "confirm", "rec", "fleet", "payload", "entity", "task"]
+
+
+# bench/decision.v1.schema.json#/$defs/Agl
+type DecisionV1Agl = float
+
+
+# bench/decision.v1.schema.json#/$defs/SkillCommand
+type DecisionV1SkillCommand = DecisionV1Goto | DecisionV1Sweep | DecisionV1Orbit | DecisionV1Follow | DecisionV1LookAt | DecisionV1Hold | DecisionV1Rtl | DecisionV1Zoom
+
+
+# bench/decision.v1.schema.json#/$defs/Speed
+type DecisionV1Speed = float
+
+
+# bench/decision.v1.schema.json#/$defs/UavId
+type DecisionV1UavId = str
 
 
 # recon/engine.schema.json# Recon engine.json
@@ -3302,6 +3337,122 @@ class DatasetIndexV1RunsMetrics(TypedDict):
     eu_f1: float | None
     ao_real: float | None
     ranked_valid: bool | None
+
+
+# bench/decision.v1.schema.json# Commander decision (drone4d.bench.decision.v1)
+class DecisionV1(TypedDict):
+    schema: NotRequired[Literal["drone4d.bench.decision.v1"]]
+    thought: NotRequired[str]
+    commands: NotRequired[list[DecisionV1SkillCommand]]
+    reports: NotRequired[list[dict[str, Any]]]
+    done: NotRequired[bool]
+    summary: NotRequired[str]
+    _usage: NotRequired[list[dict[str, Any]]]
+
+
+# bench/decision.v1.schema.json#/$defs/Follow
+class DecisionV1Follow(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["follow"]
+    params: DecisionV1FollowParams
+
+
+# bench/decision.v1.schema.json#/$defs/Follow/properties/params
+class DecisionV1FollowParams(TypedDict):
+    x: float
+    y: float
+    agl: NotRequired[DecisionV1Agl]
+    standoff: NotRequired[float]
+    speed: NotRequired[DecisionV1Speed]
+
+
+# bench/decision.v1.schema.json#/$defs/Goto
+class DecisionV1Goto(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["goto"]
+    params: DecisionV1GotoParams
+
+
+# bench/decision.v1.schema.json#/$defs/Goto/properties/params
+class DecisionV1GotoParams(TypedDict):
+    x: float
+    y: float
+    agl: NotRequired[DecisionV1Agl]
+    speed: NotRequired[DecisionV1Speed]
+
+
+# bench/decision.v1.schema.json#/$defs/Hold
+class DecisionV1Hold(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["hold"]
+    params: NotRequired[dict[str, Any]]
+
+
+# bench/decision.v1.schema.json#/$defs/LookAt
+class DecisionV1LookAt(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["look_at"]
+    params: DecisionV1LookAtParams
+
+
+# bench/decision.v1.schema.json#/$defs/LookAt/properties/params
+class DecisionV1LookAtParams(TypedDict):
+    x: float
+    y: float
+
+
+# bench/decision.v1.schema.json#/$defs/Orbit
+class DecisionV1Orbit(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["orbit"]
+    params: DecisionV1OrbitParams
+
+
+# bench/decision.v1.schema.json#/$defs/Orbit/properties/params
+class DecisionV1OrbitParams(TypedDict):
+    x: float
+    y: float
+    radius: NotRequired[float]
+    period: NotRequired[float]
+    agl: NotRequired[DecisionV1Agl]
+    speed: NotRequired[DecisionV1Speed]
+
+
+# bench/decision.v1.schema.json#/$defs/Rtl
+class DecisionV1Rtl(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["rtl"]
+    params: NotRequired[dict[str, Any]]
+
+
+# bench/decision.v1.schema.json#/$defs/Sweep
+class DecisionV1Sweep(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["sweep"]
+    params: DecisionV1SweepParams
+
+
+# bench/decision.v1.schema.json#/$defs/Sweep/properties/params
+class DecisionV1SweepParams(TypedDict):
+    polygon: NotRequired[list[list[float]]]
+    x: NotRequired[float]
+    y: NotRequired[float]
+    size: NotRequired[float]
+    agl: NotRequired[DecisionV1Agl]
+    lane: NotRequired[float]
+    speed: NotRequired[DecisionV1Speed]
+
+
+# bench/decision.v1.schema.json#/$defs/Zoom
+class DecisionV1Zoom(TypedDict):
+    uav: DecisionV1UavId
+    skill: Literal["zoom"]
+    params: DecisionV1ZoomParams
+
+
+# bench/decision.v1.schema.json#/$defs/Zoom/properties/params
+class DecisionV1ZoomParams(TypedDict):
+    factor: float
 
 
 # sensor/detection.schema.json# awr.sensor.detection.v1
