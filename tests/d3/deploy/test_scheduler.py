@@ -346,7 +346,8 @@ def test_cost_channels_and_levels():
     assert estimate_cost(rs(3, level="L1"), priority_class="research").gpu_class == "none"
     bag = estimate_cost({**rs(1), "outputs": ["bag", "rrd"]}, priority_class="research")
     assert bag.bytes_derived == pytest.approx((430 + 560) * 1e6 * 6, rel=1e-6)
-    xval = estimate_cost({**rs(1), "physics_opts": {"gz_profile": "xval"}}, priority_class="research")
+    assert estimate_cost(rs(1), priority_class="research").gz_instances == 0                  # realistic: unified L2 engine, no gz instance (ADR-226)
+    xval = estimate_cost({**rs(1), "physics": "gz", "physics_opts": {"gz_profile": "xval"}}, priority_class="research")
     assert xval.gz_instances == 1 and xval.vram_gb == pytest.approx(0.4 + 2.5) and xval.cpu_cores == 2 + 4 + 2
     custom = estimate_cost(rs(1), channels=[Channel("uav-01", "eo", "camera", 1280, 720, 10.0)], priority_class="research")
     assert custom.bytes_persist < plain.bytes_persist * 2

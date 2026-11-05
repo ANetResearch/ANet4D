@@ -237,10 +237,13 @@ def test_formal_run_spec_expands_to_realistic_l2(tmp_path: Path) -> None:
     assert L2Config().camera_profile == "rgb1080-rs" and cfg.lidar and cfg.imu and cfg.gnss       # 正式相机档与全部 L2 传感器
     assert s.policy == {"kind": "reference", "name": "track_share"} and s.seed_commit
     assert s.versions["image.gz"] == "sha256:" + "1" * 64 and s.versions["image.sensorsvc"] == "sha256:" + "2" * 64
-    # 各变体：同一 run_id、种子与运行身份（背压只改墙钟），gz 实例名与运行目录各自独立
+    # 各变体：同一 run_id、种子与运行身份（背压只改墙钟）；正式档是统一引擎，不建 gz 实例（ADR-226）
     assert len({x.run_id for x in specs.values()}) == 1 and len({x.run_hash() for x in specs.values()}) == 1
-    assert len({x.gz["name"] for x in specs.values()}) == len(specs) and len({x.gz["run_dir"] for x in specs.values()}) == len(specs)
-    assert {x.gz["export_root"] for x in specs.values()} == {str(tmp_path / "o" / "export")}
+    assert all("name" not in x.gz and "run_dir" not in x.gz for x in specs.values())
+    gzs = {n: DO._spec_for({**job, "physics": "gz"}, n) for n in DO.DEFAULT_RUNS}                  # gz 交叉验证档：实例名与运行目录各自独立
+    assert all(x.physics == "gz" for x in gzs.values())
+    assert len({x.gz["name"] for x in gzs.values()}) == len(gzs) and len({x.gz["run_dir"] for x in gzs.values()}) == len(gzs)
+    assert {x.gz["export_root"] for x in gzs.values()} == {str(tmp_path / "o" / "export")}
     assert DO._spec_for({**job, "duration_s": 12}, "a").duration_s == 12
     assert DO.main(["run", "--events-root", str(tmp_path), "--out", str(tmp_path / "x"), "--runs", "a,zz"]) == 2
 

@@ -228,7 +228,7 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 四个域都过门后，正式档换成统一引擎，gz 退为交叉验证：
 
 - Env：`spec.physics = "realistic"` 创建 `L2Tier`（正式时钟规则不变：d1_250、M24 输出集合校验），运行清单 `tier = l2`；`"l2"` 是旧名，等价但不套正式时钟规则；`"gz"` 是 gz-sim 锁步（原 Realistic 档），只作交叉验证，`ranked_physics` 规则只允许 `realistic` 排名，所以 gz 不出正式成绩。
-- 调度器只为 `gz`、`sitl` 预留 gz 容器资源；`realistic` 运行在 Env 进程内的 CPU 上。
+- 调度器只为 `gz`、`sitl` 预留 gz 容器资源；`realistic` 运行在 Env 进程内的 CPU 上，预留与原 gz 物理实例相同的份额（`l2_cpu`、`l2_mem_gb` 各 2），标准轨正式 Run 的 10 核 / 30 GB 预算不变。
 - `run_spec.v1` 的 `physics` 枚举增加 `gz`（契约版本不变）。
 - `tier_compare`：gz 档的标签改为 `gz`（`run --tier gz`，制品 `<case>.gz.npz`，`report --tiers fast,gz` 写 `tier_compare.json`）；报告 schema `drone4d.phys.tier_compare.v1` 不变，`/lab/compare` 页按报告的 `tiers` 取第二档的名字，封板前写出的制品（标签 `realistic`）照常可读。
 - 没做、登记为后续事项：排行榜在本 ADR 前后的正式成绩分别在 gz 与统一引擎上取得，下一次正式评测前须登记新的榜单版本与平台摘要（F-150）；正式配置的确定性复测（`determinism_official`）在统一引擎上于 dmax 独占卡重做（F-151）；`physics_opts.vehicle_collision`（机间碰撞）只有 gz 实现，统一引擎暂无机间碰撞。
