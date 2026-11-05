@@ -162,8 +162,8 @@ def test_mixed_fleet_air_and_ground_in_one_tier() -> None:
     assert abs(c[0] - 10.0) < 1.0 and abs(c[2] - 0.074) < 1e-9 and abs(q[2] - 10.0) < 0.3
     assert t.tracker.kind("c") == "goto" and t.tracker.kind("q") == "hover"
     with pytest.raises(PhysError) as e:
-        L2Tier(["f"], {"f": ((0.0, 0.0, 50.0), 0.0)}, grounded=[], vehicles={"f": "awr_f1"})
-    assert e.value.code == 630 and "fixed_wing" in str(e.value)
+        L2Tier(["f"], {"f": ((0.0, 0.0, 50.0), 0.0)}, grounded=[], vehicles={"f": "awr_v1"})
+    assert e.value.code == 630 and "vtol" in str(e.value)
 
 
 def test_orbit_and_waypoints_with_the_car() -> None:
