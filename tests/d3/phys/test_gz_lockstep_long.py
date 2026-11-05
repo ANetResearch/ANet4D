@@ -185,7 +185,7 @@ class _Res:
 class FakeBackend:
     """GzSimBackend 替身：按 tracker 的 goto 竖直分量一阶收敛写入 PoseHistoryBuffer（每 tick n_steps 个 4 ms 样本）。"""
 
-    name = "realistic"
+    name = "gz"
 
     def __init__(self, uavs, n_steps: int = 25, z0: float = 30.0) -> None:
         from awr.phys.pose_history import PoseHistoryBuffer

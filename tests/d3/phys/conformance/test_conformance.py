@@ -315,7 +315,7 @@ def test_report_fields_and_tolerance_flags(fast_runs: dict[str, CaseRun], tmp_pa
     assert doc["wind_mode"] == "field" and doc["turbulence_sigma"] == 0.0 and doc["pose_history_hz"] == 250
     for r in doc["cases"]:
         assert {"interface", "metrics", "diff", "tol", "within", "pos_rms_m", "pass"} <= set(r)
-        assert set(r["within"]) == set(r["diff"]) and set(r["metrics"]) == {"fast", "realistic"}
+        assert set(r["within"]) == set(r["diff"]) and set(r["metrics"]) == {"fast", "gz"}
     assert not build_report([*rows, bad])["pass"]
     p = tmp_path / "tier_compare.json"
     p.write_text(json.dumps(doc, default=str), encoding="utf-8")
