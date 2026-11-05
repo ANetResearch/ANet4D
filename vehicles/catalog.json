@@ -60,7 +60,7 @@
     {
       "id": "awr_f1",
       "dir": "awr_f1",
-      "profile_version": "1.0.0",
+      "profile_version": "1.1.0",
       "display_name": "AWR-F1 长航时固定翼",
       "display_name_zh": "AWR-F1 长航时固定翼",
       "category": "fixed_wing",
@@ -76,7 +76,7 @@
     {
       "id": "awr_v1",
       "dir": "awr_v1",
-      "profile_version": "1.0.0",
+      "profile_version": "1.1.0",
       "display_name": "AWR-V1 垂起固定翼",
       "display_name_zh": "AWR-V1 垂起固定翼",
       "category": "vtol",

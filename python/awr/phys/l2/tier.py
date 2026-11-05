@@ -12,17 +12,23 @@ force from the velocity difference). What differs from Fast is the plant: every 
   terrain following; references from ``GroundTracker`` (the shared M24 tracker as speed and heading);
 - ``usv`` (``awr.phys.l2.usv``): Fossen 3-DoF manoeuvring dynamics (added mass, Coriolis, linear + quadratic + cross-flow
   damping), twin thrusters with shaft lag, current and wind; references from ``WaterTracker`` (speed and heading, hover as
-  station keeping).
+  station keeping);
+- ``fixed_wing`` (``awr.phys.l2.fixedwing``): coefficient-table 6-DoF aerodynamics (Beard & McLain form), power-limited
+  propeller thrust, servo and motor lags, successive-loop-closure autopilot; references from ``WingTracker`` (airspeed,
+  course, climb rate with the fast tier's vector-field guidance; catapult launch, parachute recovery, loiter as hover).
 
-A vehicle's family comes from its package: air vehicles through the FleetSim profile table (``frame_kind``), ground
-vehicles through ``vehicles/ground`` and surface vessels through ``vehicles/usv`` (``awr.phys.l2.ground``). Fixed wings and
-VTOL join the same body and the same tier as their models land; until then the tier rejects them with 630 instead of pretending.
+A vehicle's family comes from its package: air vehicles through the FleetSim profile table (``frame_kind``: multirotor or
+fixed wing), ground vehicles through ``vehicles/ground`` and surface vessels through ``vehicles/usv`` (``awr.phys.l2.ground``).
+VTOL joins the same body and the same tier when its model lands; until then the tier rejects it with 630 instead of pretending.
 
 Contact:
 - air: ground = ``ground(xy)`` (DSM nearest cell of ``world``, or a callable) + ``GEAR_Z_M``; touching the ground faster than
   ``IMPACT_VZ_MPS`` downward while airborne is an IMPACT crash; on the ground the horizontal velocity is stopped by friction
   (``MU_GROUND``), the body levels and the rates are damped; landing = contact and ‖v‖ < 0.25 m/s for 0.5 s (land) or
   1.0 s (other), never within ``TAKEOFF_GRACE_S`` of a flight command;
+- fixed wings: a flying aeroplane that meets the ground is an IMPACT crash whatever its speed (it has no gear to land on
+  outside its recovery); under the parachute the touchdown at the chute's descent rate is the designed landing (TOUCHDOWN
+  once still); on the catapult rail the body is held at gear height until release (LIFTOFF when it leaves the ground);
 - ground vehicles ride on ``ground(xy)`` + cg height with the attitude on the terrain normal; a DSM rise above ``SNAP_M``
   within one step (a wall, a curb) is COLLISION_WORLD;
 - surface vessels ride on the water level ``water_z`` (one level per tier) + cg height above water, yaw-only attitude;
@@ -71,11 +77,12 @@ from awr.phys.l2.multirotor import MultirotorFleet, MultirotorParams
 from awr.phys.pose_history import G_W, STATE_N, PoseHistoryBuffer
 from awr.phys.tracker import RefTracker
 
-__all__ = ["COMMANDS", "DOMAINS", "GROUND_COMMANDS", "IMPLEMENTED", "MARGIN_M", "MU_GROUND", "WATER_COMMANDS", "L2Tier", "domain_of"]
+__all__ = ["COMMANDS", "DOMAINS", "GROUND_COMMANDS", "IMPLEMENTED", "MARGIN_M", "MU_GROUND", "WATER_COMMANDS", "WING_COMMANDS", "L2Tier", "domain_of"]
 
 COMMANDS = ("velocity", "goto", "follow_path", "orbit", "hover", "takeoff", "land", "kill")
 GROUND_COMMANDS = ("velocity", "goto", "follow_path", "orbit", "hover", "kill")
 WATER_COMMANDS = GROUND_COMMANDS
+WING_COMMANDS = COMMANDS                          # a fixed wing takes every tier command (takeoff = launch, land = parachute, hover = loiter)
 MAX_PATH_POINTS = 256
 MARGIN_M = 0.5
 COS_NADIR = math.cos(math.radians(45.0))
@@ -84,7 +91,8 @@ SNAP_M = 0.3                                      # a DSM rise above this within
 LEVEL_TAU_S = 0.1                                 # on the ground the body levels with this time constant
 _FLY = frozenset({"takeoff", "goto", "velocity", "follow_path", "orbit"})
 DOMAINS = {0: "multirotor", 1: "fixed_wing", 2: "vtol"}   # FleetSim frame_kind → domain model name
-IMPLEMENTED = ("multirotor", "ugv", "usv")
+IMPLEMENTED = ("multirotor", "ugv", "usv", "fixed_wing")
+_AIR = frozenset({"multirotor", "fixed_wing"})      # domains that fly (ground contact, landing and crash rules of the air)
 
 
 def domain_of(prof) -> str:
@@ -196,6 +204,33 @@ class _Water:
         self.fleet.stop(np.array([li]))
 
 
+class _Wing:
+    """The fixed-wing group: its own RigidState, coefficient-table fleet model and course / altitude / airspeed tracker."""
+
+    name = "fixed_wing"
+
+    def __init__(self, tier: L2Tier, members: list[tuple[str, int]], params: list) -> None:
+        from awr.phys.l2.fixedwing import GROUND, WingFleet, WingRef, WingTracker
+
+        self.uavs = [u for u, _ in members]
+        self.gi = np.array([g for _, g in members], np.int64)
+        self.fleet = WingFleet(params)
+        self.n = len(members)
+        self.S = RB.RigidState(self.n)
+        self.S.m[:] = self.fleet.m
+        self.S.J[:] = self.fleet.J
+        self.tracker = WingTracker({u: p for u, p in zip(self.uavs, params, strict=True)}, tick_s=tier.tick_ms / 1000.0)
+        self.wind = np.zeros((self.n, 3))
+        self.rho = np.full(self.n, 1.225)
+        self._v_prev = np.zeros((self.n, 3))
+        self._a_w = np.zeros((self.n, 3))
+        self.collision_r = self.fleet.collision_r
+        self.refs = [WingRef(p.v_cruise, math.nan, 0.0, 0.0, 0.0, GROUND) for p in params]
+
+    def stop(self, li: int) -> None:
+        self.fleet.stop(np.array([li]))
+
+
 class _Kinds:
     def __init__(self, tier: L2Tier) -> None:
         self._t = tier
@@ -220,6 +255,8 @@ class L2Tier:
                  ground: Callable[[np.ndarray], float] | None = None, water_z: float = 0.0, history_s: float = 2.0,
                  retain_s: float | None = 1.0) -> None:
         from awr.phys.fast import check_physics_hz, clock_of, resolve_profile
+        from awr.phys.l2.fixedwing import GROUND as WING_GROUND
+        from awr.phys.l2.fixedwing import WingParams
         from awr.phys.l2.ground import GroundTable, UsvTable
         from awr.sim.fleet.profiles import ProfileTable
 
@@ -249,6 +286,8 @@ class L2Tier:
         gnd_params = []
         sea: list[tuple[str, int]] = []
         sea_params = []
+        wing: list[tuple[str, int]] = []
+        wing_params: list[WingParams] = []
         for gi, u in enumerate(self.uavs):
             ref = vehicles.get(u, "x500")
             if GT.has(ref):
@@ -271,12 +310,17 @@ class L2Tier:
             if dom not in IMPLEMENTED:
                 raise PhysError(630, f"{u}: vehicle {pid!r} is a {dom}; the L2 engine has no {dom} model yet ({', '.join(IMPLEMENTED)})")
             self.profile_ids[u], self.domains[u] = pid, dom
+            if dom == "fixed_wing":
+                wing.append((u, gi))
+                wing_params.append(WingParams.from_profile(prof))
+                continue
             air.append((u, gi))
             air_params.append(MultirotorParams.from_profile(prof, T.limits[T.limit_ids[T.limits_index(None, pid)]]))
         self.air = _Air(self, air, air_params, self.profile_ids) if air else None
         self.gnd = _Ground(self, gnd, gnd_params) if gnd else None
         self.sea = _Water(self, sea, sea_params) if sea else None
-        self.groups = [g for g in (self.air, self.gnd, self.sea) if g is not None]
+        self.wing = _Wing(self, wing, wing_params) if wing else None
+        self.groups = [g for g in (self.air, self.gnd, self.sea, self.wing) if g is not None]
         self.collision_r = np.zeros(self.n)
         for g in self.groups:
             self.collision_r[g.gi] = g.collision_r
@@ -299,6 +343,20 @@ class L2Tier:
                 A.S.p[li] = p
                 A.S.q[li] = RB.q_from_yaw(float(yaw))
                 self._v.append(_V(u, gi, "usv", li, landed=False, contact=True))
+            elif self.domains[u] == "fixed_wing":
+                A = self.wing
+                li = A.uavs.index(u)
+                if u in g_set:
+                    p[2] = self.ground_h(p[:2]) + GEAR_Z_M
+                A.S.p[li] = p
+                A.S.q[li] = RB.q_from_yaw(float(yaw))
+                if u in g_set:
+                    A.fleet.mode[li] = WING_GROUND
+                    A.tracker.st[u]["mode"] = WING_GROUND
+                else:
+                    A.fleet.set_trim(np.array([li]), A.S)                                   # airborne spawn: trimmed cruise along the heading
+                    A.tracker.st[u]["mode"] = A.fleet.mode[li]
+                self._v.append(_V(u, gi, "fixed_wing", li, landed=u in g_set, contact=u in g_set))
             else:
                 A = self.air
                 li = A.uavs.index(u)
@@ -359,7 +417,7 @@ class L2Tier:
                                                             "l1_hz": self.cp.l1_hz},
                 "ranked_allowed": False, "determinism": "1b", "requires_gpu": False, "max_vehicles": 1024,
                 "frame_kinds": list(IMPLEMENTED), "domains": list(IMPLEMENTED), "commands": list(COMMANDS), "ground_commands": list(GROUND_COMMANDS),
-                "water_commands": list(WATER_COMMANDS), "water_z_m": self.water_z,
+                "water_commands": list(WATER_COMMANDS), "wing_commands": list(WING_COMMANDS), "water_z_m": self.water_z,
                 "engine": "awr.phys.l2", "collision": bool(self.world is not None and hasattr(self.world, "closest_points_batch"))}
 
     # ------------------------------------------------------------------------------------------------------ samples
@@ -411,7 +469,7 @@ class L2Tier:
         return out
 
     def _group(self, v: _V):
-        return self.air if v.dom == "multirotor" else self.gnd if v.dom == "ugv" else self.sea
+        return self.air if v.dom == "multirotor" else self.gnd if v.dom == "ugv" else self.sea if v.dom == "usv" else self.wing
 
     # ------------------------------------------------------------------------------------------------------ tick
     def advance(self, k: int) -> TickResult:
@@ -425,14 +483,20 @@ class L2Tier:
             if v.crash != "none":
                 continue
             g = self._group(v)
-            g.tracker.set(c, g.S.p[v.li])
+            if v.dom == "fixed_wing":
+                g.tracker.set(c, g.S.p[v.li], g.S.v[v.li], v.landed, self.ground_h(g.S.p[v.li, :2]))
+                if c.kind == "takeoff" and v.landed:                                        # the launch: the only way off the ground
+                    v.landed = False
+                    v.fly_t_ns = self.t_k_ns
+            else:
+                g.tracker.set(c, g.S.p[v.li])
             if v.dom == "multirotor" and c.kind in _FLY:
                 v.landed = False
                 v.fly_t_ns = self.t_k_ns
             v.still_ns = 0
         self._pending = keep
         rows = self._rows()
-        A, Gd, W = self.air, self.gnd, self.sea
+        A, Gd, W, Wg = self.air, self.gnd, self.sea, self.wing
         if A is not None:
             self._observe_air(rows)
             plan = A.tracker.plan(k, self.t_k_ns, self.n_steps)
@@ -456,6 +520,10 @@ class L2Tier:
             for i, u in enumerate(W.uavs):
                 r = rows[W.gi[i]]
                 W.speed_sp[i], W.head_sp[i], W.enabled[i] = W.tracker.setpoint(u, r[0:3], r[7:10], r[3:7], (float(W.current[i, 0]), float(W.current[i, 1])))
+        if Wg is not None:
+            for i, u in enumerate(Wg.uavs):
+                r = rows[Wg.gi[i]]
+                Wg.refs[i] = Wg.tracker.setpoint(u, r[0:3], r[7:10], r[3:7])
         contacts: list[ContactEvent] = []
         for j in range(self.n_steps):
             t_ns = self.t_k_ns + (j + 1) * self.step_ns
@@ -467,6 +535,8 @@ class L2Tier:
                 p_prev["ugv"] = self._step_ground(t_ns, contacts)
             if W is not None:
                 p_prev["usv"] = self._step_water(t_ns, contacts)
+            if Wg is not None:
+                p_prev["fixed_wing"] = self._step_wing(t_ns, contacts)
             self._collide(p_prev, t_ns, contacts)
             for g in self.groups:
                 g._a_w = (g.S.v - g._v_prev) / self.dt
@@ -649,6 +719,88 @@ class L2Tier:
         W._v_prev = v0
         return p_prev
 
+    # ------------------------------------------------------------------------------------------------------ fixed-wing step
+    def _step_wing(self, t_ns: int, contacts: list[ContactEvent]) -> np.ndarray:
+        from awr.phys.l2.fixedwing import CHUTE, GROUND, LAUNCH
+
+        Wg = self.wing
+        S, F, dt = Wg.S, Wg.fleet, self.dt
+        vs = [v for v in self._v if v.dom == "fixed_wing"]
+        F.control(S, Wg.refs, Wg.wind, dt)
+        Fw, tau = F.forces(S, Wg.wind, Wg.rho, dt)
+        Fw = Fw + S.m[:, None] * G_W
+        static = np.array([v.landed or v.crash != "none" for v in vs])
+        Fw[static] = 0.0
+        tau[static] = 0.0
+        p_prev = S.p.copy()
+        v0 = S.v.copy()
+        S.integrate(Fw, tau, dt)
+        for v in vs:
+            i = v.li
+            if v.crash != "none" or v.landed:
+                S.p[i] = p_prev[i]
+                S.v[i] = 0.0
+                S.w[i] = 0.0
+                continue
+            mode = int(F.mode[i])
+            zg = self.ground_h(S.p[i, :2]) + GEAR_Z_M
+            if mode == LAUNCH:                                                          # on the rail: carried along it, attitude held
+                F.on_rail(S, i, p_prev[i], dt)
+                v.contact = True
+                continue
+            if mode == CHUTE:
+                F.level_chute(S, np.array([i]), dt)
+            if S.p[i, 2] <= zg:
+                vz = float(S.v[i, 2])
+                if not v.contact and mode != CHUTE:
+                    # a flying aeroplane meeting the ground: there is no gear to land on outside the recovery
+                    v.crash = "impact"
+                    self.stats["crashes"] += 1
+                    contacts.append(ContactEvent(v.uav, t_ns, "IMPACT", "dsm", (float(S.p[i, 0]), float(S.p[i, 1]), zg), (0.0, 0.0, 1.0),
+                                                 float(np.linalg.norm(v0[i]))))
+                    S.p[i, 2] = zg
+                    S.v[i] = 0.0
+                    S.w[i] = 0.0
+                    F.stop(np.array([i]))
+                    v.contact = True
+                    continue
+                S.p[i, 2] = zg
+                S.v[i, 2] = max(vz, 0.0)
+                h = math.hypot(S.v[i, 0], S.v[i, 1])
+                if h > 0.0:
+                    S.v[i, :2] *= max(h - MU_GROUND * RB.G * dt, 0.0) / h
+                S.w[i, :2] = 0.0
+                yaw = float(RB.yaw_of(S.q[i:i + 1])[0])
+                lev = RB.q_from_yaw(yaw)[None]
+                a_ = min(dt / LEVEL_TAU_S, 1.0)
+                qi = S.q[i:i + 1]
+                if float(np.sum(qi * lev)) < 0.0:
+                    lev = -lev
+                qn = qi + (lev - qi) * a_
+                S.q[i] = qn[0] / np.linalg.norm(qn[0])
+                v.contact = True
+            elif v.contact and S.p[i, 2] > zg + 0.02:
+                v.contact = False
+                if v.crash == "none":
+                    contacts.append(ContactEvent(v.uav, t_ns, "LIFTOFF", "dsm", (float(S.p[i, 0]), float(S.p[i, 1]), zg), (0.0, 0.0, 1.0),
+                                                 float(np.linalg.norm(S.v[i]))))
+            if v.contact:
+                still = float(np.linalg.norm(S.v[i])) < STILL_V_MPS
+                v.still_ns = v.still_ns + self.step_ns if still else 0
+                need = LAND_STILL_S if Wg.tracker.kind(v.uav) == "land" else STILL_S
+                if v.still_ns >= int(need * 1e9) and t_ns - v.fly_t_ns >= int(TAKEOFF_GRACE_S * 1e9):
+                    v.landed = True
+                    S.v[i] = 0.0
+                    S.w[i] = 0.0
+                    F.set_mode(i, GROUND)
+                    Wg.tracker.st[v.uav]["mode"] = GROUND
+                    contacts.append(ContactEvent(v.uav, t_ns, "TOUCHDOWN", "dsm", (float(S.p[i, 0]), float(S.p[i, 1]), float(S.p[i, 2])),
+                                                 (0.0, 0.0, 1.0), 0.0))
+            else:
+                v.still_ns = 0
+        Wg._v_prev = v0
+        return p_prev
+
     # ------------------------------------------------------------------------------------------------------ collision
     def _collide(self, p_prev: Mapping[str, np.ndarray], t_ns: int, contacts: list[ContactEvent]) -> None:
         w = self.world
@@ -660,7 +812,7 @@ class L2Tier:
             if v.crash != "none":
                 continue
             g = self._group(v)
-            if v.dom == "multirotor" and v.contact:
+            if v.dom in _AIR and v.contact:
                 continue
             moved = float(np.linalg.norm(g.S.p[v.li] - p_prev[v.dom][v.li]))
             v.clear_m -= moved
@@ -694,7 +846,7 @@ class L2Tier:
             at = S.p[i].copy()
             S.p[i] = p_prev[v.dom][i]
             S.v[i, :2] = 0.0
-            S.v[i, 2] = min(float(S.v[i, 2]), 0.0) if v.dom == "multirotor" else 0.0
+            S.v[i, 2] = min(float(S.v[i, 2]), 0.0) if v.dom in _AIR else 0.0
             S.w[i] = 0.0
             g.stop(i)
             nrm = None if dn <= 1e-9 else tuple(float(x) for x in (-dvec / dn))
@@ -726,7 +878,7 @@ class L2Tier:
 
     @property
     def fleet(self):
-        """The multirotor fleet model (rotor speeds, integrators); ``gnd.fleet`` / ``sea.fleet`` are the ground vehicles' and vessels' models."""
+        """The multirotor fleet model (rotor speeds, integrators); ``gnd.fleet`` / ``sea.fleet`` / ``wing.fleet`` are the other domains' models."""
         return self.air.fleet if self.air is not None else None
 
     def kind(self, uav: str) -> str:

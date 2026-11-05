@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.anet-drone.dev/vehicle/1/vehicle_profile.schema.json",
-  "title": "Vehicle profile params.yaml (awr.vehicle.v1, schema 1.1)",
-  "description": "AWR-16 §11.2: every identifiable parameter is {value, conf A-D, src}; conf E values live only in rejected[]. Loader runs VH-1..VH-7 and rejects on failure (353). Keys snake_case with unit suffix; px4_params keeps PX4 names. Schema 1.1 (ADR-115, AWR-20 §7.3): required fields depend on frame.type (multirotor fields for quad_x, hex_x and the VTOL lift system; airframe for fixed_wing and vtol_quadplane); D1 files stay valid; catalog models carry signatures.",
+  "title": "Vehicle profile params.yaml (awr.vehicle.v1, schema 1.2)",
+  "description": "AWR-16 §11.2: every identifiable parameter is {value, conf A-D, src}; conf E values live only in rejected[]. Loader runs VH-1..VH-7 and rejects on failure (353). Keys snake_case with unit suffix; px4_params keeps PX4 names. Schema 1.2 (ADR-115, AWR-20 §7.3): required fields depend on frame.type (multirotor fields for quad_x, hex_x and the VTOL lift system; airframe for fixed_wing and vtol_quadplane); D1 files stay valid; catalog models carry signatures.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -2559,6 +2559,1444 @@
         "limits_default"
       ],
       "description": "catalog model metadata (AWR-20 §7.3)"
+    },
+    "fw_dynamics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "6-DoF coefficient table of the unified L2 engine's fixed-wing domain (Beard & McLain form; awr.phys.l2.fixedwing). Optional: without it the fixed wing flies the fw_kin fast tier only. inertia_kgm2 is required alongside it.",
+      "properties": {
+        "chord_m": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "conf": {
+                  "enum": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                  ]
+                },
+                "src": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "check": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "conf",
+                "src"
+              ]
+            }
+          ],
+          "unit": "m",
+          "description": "mean aerodynamic chord (default wing_area_m2 / span_m)"
+        },
+        "lift": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "lift coefficients (C_D0, e and C_Lmax come from airframe)",
+          "properties": {
+            "cl0": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_L0"
+            },
+            "cl_alpha": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Lα, 1/rad"
+            },
+            "cl_q": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Lq (pitch rate, non-dimensional c/2V)"
+            },
+            "cl_de": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Lδe, 1/rad"
+            }
+          },
+          "required": [
+            "cl0",
+            "cl_alpha",
+            "cl_q",
+            "cl_de"
+          ]
+        },
+        "drag": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "drag increments beyond C_D0 + C_L²/(π e AR)",
+          "properties": {
+            "cd_q": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Dq"
+            },
+            "cd_de": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Dδe, 1/rad"
+            }
+          },
+          "required": []
+        },
+        "pitch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "pitching-moment coefficients (about c)",
+          "properties": {
+            "cm0": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_m0"
+            },
+            "cm_alpha": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_mα, 1/rad"
+            },
+            "cm_q": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_mq"
+            },
+            "cm_de": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_mδe, 1/rad"
+            }
+          },
+          "required": [
+            "cm0",
+            "cm_alpha",
+            "cm_q",
+            "cm_de"
+          ]
+        },
+        "side": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "side-force coefficients",
+          "properties": {
+            "cy0": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Y0"
+            },
+            "cy_beta": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Yβ, 1/rad"
+            },
+            "cy_p": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Yp"
+            },
+            "cy_r": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Yr"
+            },
+            "cy_da": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Yδa, 1/rad"
+            },
+            "cy_dr": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_Yδr, 1/rad"
+            }
+          },
+          "required": [
+            "cy_beta"
+          ]
+        },
+        "roll": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "rolling-moment coefficients (about b)",
+          "properties": {
+            "cl0": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_l0"
+            },
+            "cl_beta": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_lβ, 1/rad"
+            },
+            "cl_p": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_lp"
+            },
+            "cl_r": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_lr"
+            },
+            "cl_da": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_lδa, 1/rad"
+            },
+            "cl_dr": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_lδr, 1/rad"
+            }
+          },
+          "required": [
+            "cl_beta",
+            "cl_p",
+            "cl_r",
+            "cl_da"
+          ]
+        },
+        "yaw": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "yawing-moment coefficients (about b)",
+          "properties": {
+            "cn0": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_n0"
+            },
+            "cn_beta": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_nβ, 1/rad"
+            },
+            "cn_p": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_np"
+            },
+            "cn_r": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_nr"
+            },
+            "cn_da": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_nδa, 1/rad"
+            },
+            "cn_dr": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "description": "C_nδr, 1/rad"
+            }
+          },
+          "required": [
+            "cn_beta",
+            "cn_p",
+            "cn_r",
+            "cn_dr"
+          ]
+        },
+        "controls": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "control-surface limits and servo lag",
+          "properties": {
+            "de_max_deg": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 60
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 60
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "deg"
+            },
+            "da_max_deg": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 60
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 60
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "deg"
+            },
+            "dr_max_deg": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 60
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 60
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "deg"
+            },
+            "tau_servo_s": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "s"
+            }
+          },
+          "required": [
+            "de_max_deg",
+            "da_max_deg",
+            "dr_max_deg",
+            "tau_servo_s"
+          ]
+        },
+        "propulsion": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "propeller: T = δt·min(t_static_n, eta_prop·p_max_w / V_a), first-order motor lag",
+          "properties": {
+            "type": {
+              "enum": [
+                "pusher",
+                "tractor"
+              ]
+            },
+            "t_static_n": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "N",
+              "description": "static thrust at full throttle"
+            },
+            "tau_motor_s": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 2
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 2
+                    },
+                    "conf": {
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                      ]
+                    },
+                    "src": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "check": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "conf",
+                    "src"
+                  ]
+                }
+              ],
+              "unit": "s"
+            }
+          },
+          "required": [
+            "type",
+            "t_static_n",
+            "tau_motor_s"
+          ]
+        }
+      },
+      "required": [
+        "lift",
+        "pitch",
+        "side",
+        "roll",
+        "yaw",
+        "controls",
+        "propulsion"
+      ]
     }
   },
   "required": [
@@ -2621,6 +4059,12 @@
               "type": "object",
               "required": [
                 "vtol"
+              ]
+            },
+            {
+              "type": "object",
+              "required": [
+                "fw_dynamics"
               ]
             }
           ]
@@ -2691,12 +4135,6 @@
             {
               "type": "object",
               "required": [
-                "inertia_kgm2"
-              ]
-            },
-            {
-              "type": "object",
-              "required": [
                 "motor"
               ]
             },
@@ -2733,6 +4171,21 @@
             "type": "object"
           }
         }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "fw_dynamics"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "inertia_kgm2",
+          "airframe"
+        ]
       }
     }
   ]

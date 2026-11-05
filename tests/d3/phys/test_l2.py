@@ -163,8 +163,8 @@ def test_wall_collision_and_kill_impact_on_the_shared_case() -> None:
 
 def test_rejects_vehicles_without_a_domain_model_and_bad_commands() -> None:
     with pytest.raises(PhysError) as e:
-        L2Tier(["f"], {"f": ((0.0, 0.0, 50.0), 0.0)}, grounded=[], vehicles={"f": "awr_f1"})
-    assert e.value.code == 630 and "fixed_wing" in str(e.value)
+        L2Tier(["f"], {"f": ((0.0, 0.0, 50.0), 0.0)}, grounded=[], vehicles={"f": "awr_v1"})                 # VTOL: no domain model yet
+    assert e.value.code == 630 and "vtol" in str(e.value)
     t = L2Tier(["a"], {"a": ((0.0, 0.0, 10.0), 0.0)}, grounded=[])
     t.open()
     r = t.submit([TierCommand("zz", "hover", 0), TierCommand("a", "orbit", 0), TierCommand("a", "follow_path", 0)])

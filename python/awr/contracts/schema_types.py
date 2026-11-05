@@ -1215,6 +1215,50 @@ __all__ = [
     "VehicleProfileEnvLimits",
     "VehicleProfileFidelity",
     "VehicleProfileFrame",
+    "VehicleProfileFwDynamics",
+    "VehicleProfileFwDynamicsChordMOneOf1",
+    "VehicleProfileFwDynamicsControls",
+    "VehicleProfileFwDynamicsControlsDaMaxDegOneOf1",
+    "VehicleProfileFwDynamicsControlsDeMaxDegOneOf1",
+    "VehicleProfileFwDynamicsControlsDrMaxDegOneOf1",
+    "VehicleProfileFwDynamicsControlsTauServoSOneOf1",
+    "VehicleProfileFwDynamicsDrag",
+    "VehicleProfileFwDynamicsDragCdDeOneOf1",
+    "VehicleProfileFwDynamicsDragCdQOneOf1",
+    "VehicleProfileFwDynamicsLift",
+    "VehicleProfileFwDynamicsLiftCl0OneOf1",
+    "VehicleProfileFwDynamicsLiftClAlphaOneOf1",
+    "VehicleProfileFwDynamicsLiftClDeOneOf1",
+    "VehicleProfileFwDynamicsLiftClQOneOf1",
+    "VehicleProfileFwDynamicsPitch",
+    "VehicleProfileFwDynamicsPitchCm0OneOf1",
+    "VehicleProfileFwDynamicsPitchCmAlphaOneOf1",
+    "VehicleProfileFwDynamicsPitchCmDeOneOf1",
+    "VehicleProfileFwDynamicsPitchCmQOneOf1",
+    "VehicleProfileFwDynamicsPropulsion",
+    "VehicleProfileFwDynamicsPropulsionTStaticNOneOf1",
+    "VehicleProfileFwDynamicsPropulsionTauMotorSOneOf1",
+    "VehicleProfileFwDynamicsRoll",
+    "VehicleProfileFwDynamicsRollCl0OneOf1",
+    "VehicleProfileFwDynamicsRollClBetaOneOf1",
+    "VehicleProfileFwDynamicsRollClDaOneOf1",
+    "VehicleProfileFwDynamicsRollClDrOneOf1",
+    "VehicleProfileFwDynamicsRollClPOneOf1",
+    "VehicleProfileFwDynamicsRollClROneOf1",
+    "VehicleProfileFwDynamicsSide",
+    "VehicleProfileFwDynamicsSideCy0OneOf1",
+    "VehicleProfileFwDynamicsSideCyBetaOneOf1",
+    "VehicleProfileFwDynamicsSideCyDaOneOf1",
+    "VehicleProfileFwDynamicsSideCyDrOneOf1",
+    "VehicleProfileFwDynamicsSideCyPOneOf1",
+    "VehicleProfileFwDynamicsSideCyROneOf1",
+    "VehicleProfileFwDynamicsYaw",
+    "VehicleProfileFwDynamicsYawCn0OneOf1",
+    "VehicleProfileFwDynamicsYawCnBetaOneOf1",
+    "VehicleProfileFwDynamicsYawCnDaOneOf1",
+    "VehicleProfileFwDynamicsYawCnDrOneOf1",
+    "VehicleProfileFwDynamicsYawCnPOneOf1",
+    "VehicleProfileFwDynamicsYawCnROneOf1",
     "VehicleProfileGeometry",
     "VehicleProfileGeometryArmXyM",
     "VehicleProfileGeometryCollisionRadiusM",
@@ -11888,7 +11932,7 @@ class VehicleCatalogSensors(TypedDict):
     items: list[VehicleCatalogSensorItem]
 
 
-# vehicle/vehicle_profile.schema.json# Vehicle profile params.yaml (awr.vehicle.v1, schema 1.1)
+# vehicle/vehicle_profile.schema.json# Vehicle profile params.yaml (awr.vehicle.v1, schema 1.2)
 class VehicleProfile(TypedDict):
     schema: Literal["awr.vehicle.v1"]
     profile_version: str
@@ -11927,6 +11971,7 @@ class VehicleProfile(TypedDict):
     compute_tops: NotRequired[float]
     labels: NotRequired[dict[str, str]]
     catalog: NotRequired[VehicleProfileCatalog]
+    fw_dynamics: NotRequired[VehicleProfileFwDynamics]
 
 
 # vehicle/vehicle_profile.schema.json#/properties/acoustic
@@ -12318,6 +12363,366 @@ class VehicleProfileFrame(TypedDict):
     type: Literal["quad_x", "hex_x", "fixed_wing", "vtol_quadplane"]
     rotor_order: Literal["px4"]
     body: Literal["frd"]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics
+class VehicleProfileFwDynamics(TypedDict):
+    chord_m: NotRequired[float | VehicleProfileFwDynamicsChordMOneOf1]
+    lift: VehicleProfileFwDynamicsLift
+    drag: NotRequired[VehicleProfileFwDynamicsDrag]
+    pitch: VehicleProfileFwDynamicsPitch
+    side: VehicleProfileFwDynamicsSide
+    roll: VehicleProfileFwDynamicsRoll
+    yaw: VehicleProfileFwDynamicsYaw
+    controls: VehicleProfileFwDynamicsControls
+    propulsion: VehicleProfileFwDynamicsPropulsion
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/chord_m/oneOf/1
+class VehicleProfileFwDynamicsChordMOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/controls
+class VehicleProfileFwDynamicsControls(TypedDict):
+    de_max_deg: float | VehicleProfileFwDynamicsControlsDeMaxDegOneOf1
+    da_max_deg: float | VehicleProfileFwDynamicsControlsDaMaxDegOneOf1
+    dr_max_deg: float | VehicleProfileFwDynamicsControlsDrMaxDegOneOf1
+    tau_servo_s: float | VehicleProfileFwDynamicsControlsTauServoSOneOf1
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/controls/properties/da_max_deg/oneOf/1
+class VehicleProfileFwDynamicsControlsDaMaxDegOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/controls/properties/de_max_deg/oneOf/1
+class VehicleProfileFwDynamicsControlsDeMaxDegOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/controls/properties/dr_max_deg/oneOf/1
+class VehicleProfileFwDynamicsControlsDrMaxDegOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/controls/properties/tau_servo_s/oneOf/1
+class VehicleProfileFwDynamicsControlsTauServoSOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/drag
+class VehicleProfileFwDynamicsDrag(TypedDict):
+    cd_q: NotRequired[float | VehicleProfileFwDynamicsDragCdQOneOf1]
+    cd_de: NotRequired[float | VehicleProfileFwDynamicsDragCdDeOneOf1]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/drag/properties/cd_de/oneOf/1
+class VehicleProfileFwDynamicsDragCdDeOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/drag/properties/cd_q/oneOf/1
+class VehicleProfileFwDynamicsDragCdQOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/lift
+class VehicleProfileFwDynamicsLift(TypedDict):
+    cl0: float | VehicleProfileFwDynamicsLiftCl0OneOf1
+    cl_alpha: float | VehicleProfileFwDynamicsLiftClAlphaOneOf1
+    cl_q: float | VehicleProfileFwDynamicsLiftClQOneOf1
+    cl_de: float | VehicleProfileFwDynamicsLiftClDeOneOf1
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/lift/properties/cl0/oneOf/1
+class VehicleProfileFwDynamicsLiftCl0OneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/lift/properties/cl_alpha/oneOf/1
+class VehicleProfileFwDynamicsLiftClAlphaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/lift/properties/cl_de/oneOf/1
+class VehicleProfileFwDynamicsLiftClDeOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/lift/properties/cl_q/oneOf/1
+class VehicleProfileFwDynamicsLiftClQOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/pitch
+class VehicleProfileFwDynamicsPitch(TypedDict):
+    cm0: float | VehicleProfileFwDynamicsPitchCm0OneOf1
+    cm_alpha: float | VehicleProfileFwDynamicsPitchCmAlphaOneOf1
+    cm_q: float | VehicleProfileFwDynamicsPitchCmQOneOf1
+    cm_de: float | VehicleProfileFwDynamicsPitchCmDeOneOf1
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/pitch/properties/cm0/oneOf/1
+class VehicleProfileFwDynamicsPitchCm0OneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/pitch/properties/cm_alpha/oneOf/1
+class VehicleProfileFwDynamicsPitchCmAlphaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/pitch/properties/cm_de/oneOf/1
+class VehicleProfileFwDynamicsPitchCmDeOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/pitch/properties/cm_q/oneOf/1
+class VehicleProfileFwDynamicsPitchCmQOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/propulsion
+class VehicleProfileFwDynamicsPropulsion(TypedDict):
+    type: Literal["pusher", "tractor"]
+    t_static_n: float | VehicleProfileFwDynamicsPropulsionTStaticNOneOf1
+    tau_motor_s: float | VehicleProfileFwDynamicsPropulsionTauMotorSOneOf1
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/propulsion/properties/t_static_n/oneOf/1
+class VehicleProfileFwDynamicsPropulsionTStaticNOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/propulsion/properties/tau_motor_s/oneOf/1
+class VehicleProfileFwDynamicsPropulsionTauMotorSOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll
+class VehicleProfileFwDynamicsRoll(TypedDict):
+    cl0: NotRequired[float | VehicleProfileFwDynamicsRollCl0OneOf1]
+    cl_beta: float | VehicleProfileFwDynamicsRollClBetaOneOf1
+    cl_p: float | VehicleProfileFwDynamicsRollClPOneOf1
+    cl_r: float | VehicleProfileFwDynamicsRollClROneOf1
+    cl_da: float | VehicleProfileFwDynamicsRollClDaOneOf1
+    cl_dr: NotRequired[float | VehicleProfileFwDynamicsRollClDrOneOf1]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl0/oneOf/1
+class VehicleProfileFwDynamicsRollCl0OneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl_beta/oneOf/1
+class VehicleProfileFwDynamicsRollClBetaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl_da/oneOf/1
+class VehicleProfileFwDynamicsRollClDaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl_dr/oneOf/1
+class VehicleProfileFwDynamicsRollClDrOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl_p/oneOf/1
+class VehicleProfileFwDynamicsRollClPOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/roll/properties/cl_r/oneOf/1
+class VehicleProfileFwDynamicsRollClROneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side
+class VehicleProfileFwDynamicsSide(TypedDict):
+    cy0: NotRequired[float | VehicleProfileFwDynamicsSideCy0OneOf1]
+    cy_beta: float | VehicleProfileFwDynamicsSideCyBetaOneOf1
+    cy_p: NotRequired[float | VehicleProfileFwDynamicsSideCyPOneOf1]
+    cy_r: NotRequired[float | VehicleProfileFwDynamicsSideCyROneOf1]
+    cy_da: NotRequired[float | VehicleProfileFwDynamicsSideCyDaOneOf1]
+    cy_dr: NotRequired[float | VehicleProfileFwDynamicsSideCyDrOneOf1]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy0/oneOf/1
+class VehicleProfileFwDynamicsSideCy0OneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy_beta/oneOf/1
+class VehicleProfileFwDynamicsSideCyBetaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy_da/oneOf/1
+class VehicleProfileFwDynamicsSideCyDaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy_dr/oneOf/1
+class VehicleProfileFwDynamicsSideCyDrOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy_p/oneOf/1
+class VehicleProfileFwDynamicsSideCyPOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/side/properties/cy_r/oneOf/1
+class VehicleProfileFwDynamicsSideCyROneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw
+class VehicleProfileFwDynamicsYaw(TypedDict):
+    cn0: NotRequired[float | VehicleProfileFwDynamicsYawCn0OneOf1]
+    cn_beta: float | VehicleProfileFwDynamicsYawCnBetaOneOf1
+    cn_p: float | VehicleProfileFwDynamicsYawCnPOneOf1
+    cn_r: float | VehicleProfileFwDynamicsYawCnROneOf1
+    cn_da: NotRequired[float | VehicleProfileFwDynamicsYawCnDaOneOf1]
+    cn_dr: float | VehicleProfileFwDynamicsYawCnDrOneOf1
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn0/oneOf/1
+class VehicleProfileFwDynamicsYawCn0OneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn_beta/oneOf/1
+class VehicleProfileFwDynamicsYawCnBetaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn_da/oneOf/1
+class VehicleProfileFwDynamicsYawCnDaOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn_dr/oneOf/1
+class VehicleProfileFwDynamicsYawCnDrOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn_p/oneOf/1
+class VehicleProfileFwDynamicsYawCnPOneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
+
+
+# vehicle/vehicle_profile.schema.json#/properties/fw_dynamics/properties/yaw/properties/cn_r/oneOf/1
+class VehicleProfileFwDynamicsYawCnROneOf1(TypedDict):
+    value: float
+    conf: Literal["A", "B", "C", "D"]
+    src: str
+    check: NotRequired[str]
 
 
 # vehicle/vehicle_profile.schema.json#/properties/geometry

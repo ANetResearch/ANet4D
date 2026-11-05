@@ -83,6 +83,25 @@ gz 的水面支持是一组按模型逐个调参的插件（浮力、升阻力�
 | `blueboat` | Blue Robotics BlueBoat 级 1.2 m 小艇 | 尺寸、干重、最高速 3 m/s、电池 532 Wh / 1 m/s 18 h 为规格页 A 级；水动力与推进器系数 D 级（按 Otter 比例与 3 m/s 推阻平衡定） |
 | `wamv` | WAM-V 16 级 4.9 m 双体艇（RobotX / VRX） | 质量 180 kg、I_z 446、推进器位置、线性 + 二次阻尼系数取 VRX 模型（A 级）；推力上限 250 / −100 N 为 VRX 插件缺省（B 级），其余 D 级 |
 
+## 2d. 固定翼域模型（5d）
+
+gz 没有一个固定翼模型：PX4 的 advanced_plane 等是按机型逐个调参的 LiftDrag 插件组合，所以这一域集成的是小型无人机教科书的标准模型：Beard & McLain《Small Unmanned Aircraft》第 4 章的系数表六自由度（附录 E 的 Aerosonde 形式），再补沙盒要的部分：
+
+| 环节 | Beard & McLain 系数表六自由度 | 统一引擎 fixed_wing 域 |
+|---|---|---|
+| 坐标 | NED / FRD，欧拉角 | **同一刚体核**（ENU / FLU 四元数，半隐式欧拉，对角惯量）；B&M 的 FRD 方程按 y → −y、z → −z 映到 FLU，气动力矩同 |
+| 升力 | C_L0 + C_Lα·α 与平板 2·sgn α·sin²α·cos α 以 sigmoid 混合（锐度 M，失速角 α0） | 同一式；α0 = (C_Lmax − C_L0)/C_Lα + 3/M（机型包只给 cl_max，由它反推），M = 100 |
+| 阻力 | C_D0 + C_L²/(π e AR) | 同 |
+| 俯仰 / 侧力 / 滚转 / 偏航 | C_m0、C_mα、C_mq、C_mδe；C_Y、C_l、C_n 的 β、p、r、δa、δr 导数 | 同一表，机型包 `fw_dynamics` 块给出（每个系数 value / conf / src） |
+| 推进 | 螺旋桨模型（S_prop、C_prop、k_motor） | 功率限制的螺旋桨律 T = δt·min(T_static, η·P_max / V_a)，取机型包已有的 `propulsion`（静推力、最大功率、效率） |
+| 执行器 | 舵面直接给定 | 舵面与电机一阶滞后（τ_servo、τ_motor），舵面限幅（δe、δa、δr 各自上限） |
+| 发射 / 回收 | 无（空中起算） | **弹射**：倾角 12° 的导轨以恒加速度在 `launch.t_s` 内把机体带到 v_min + 1.5 m/s，姿态沿导轨、无角速度，脱轨即 LIFTOFF；**伞降**：land 指令开伞，阻力 k = m g / v_desc² 的平方阻力 + 角速度阻尼，机体以 τ 1 s 改平，以额定下降率触地 → TOUCHDOWN、GROUND |
+| 地面 | 无 | 飞行中触地即 IMPACT（固定翼没有起落架可落地，回收只有伞降）；kill = 无动力、舵面回中，自由滑翔 / 螺旋至触地；撞网格为 COLLISION_WORLD |
+
+参考与控制：指令集 velocity、goto、follow_path、orbit、hover、takeoff、land、kill。`WingTracker` 把 M24 的指令变成固定翼的参考（空速、航向 χ、航向前馈、爬升率）：直线与圆的向量场用 `awr.sim.fixedwing.kinematics` 快速档同一套 `line_field` / `circle_field`（罗盘航向换成 ENU），goto 到点后、follow_path 末航点后、hover 都是顺时针盘旋，半径取 max(1.2 V²/(g tan φ_max(V))，机型缺省盘旋半径，指令半径)，航点到达圈 max(30 m, 0.5 盘旋半径)，orbit 按圈数计满后继续盘旋。自动驾驶仪是 B&M 第 6 章的逐环结构，**与基准共用**：横向——航向误差 → 航向角速度需求 → 协调转弯倾角 φ_c = −atan(V_a·ψ̇_c / g)（ENU 逆时针为正），倾角上限 min(φ_max, acos((1.15 V_s / V_a)²))（载荷因子不逼近失速），滚转角速率限幅，副翼 PD，方向舵按侧滑 β 配平；纵向——爬升率需求先过"速度优先"的余量 clip((V_a − 1.1 V_s)/(v_min − 1.1 V_s), 0, 1)（慢了先低头），γ_c = asin(ḣ_c / V_a)，转弯载荷 n = 1/cos φ_c 下的需求迎角作前馈，俯仰角需求 = γ_c + α_req + 高度环 PI，并限在当前迎角 + 0.85 α_stall 以内（迎角保护），升降舵 PD + 积分，并扣去协调转弯的俯仰角速度 g/V_a·tan φ·sin φ·cos θ；空速——设定 clip(max(V_c, 1.15 V_s·√n), v_min, v_max) 按 a_max 斜坡，油门 = 配平推力前馈 + PI + (1 − 余量)（慢时满油门加低头）。滚转 / 俯仰内环增益按 B&M 的饱和设计在巡航点算出（最大误差 15° / 10°，ζ = 0.707），机型不同自动不同。
+
+机型包：固定翼没有另开一族，仍是 `vehicles/` 的多旋翼目录（schema `awr.vehicle_profile` 1.2）：`fw_dynamics` 块（chord_m、lift、drag、pitch、side、roll、yaw、controls、propulsion）与 `inertia_kgm2`，多旋翼禁止带 `fw_dynamics`，`fw_dynamics` 要求同时有 `inertia_kgm2` 与 `airframe`。`awr_f1`、`awr_v1` 升到 1.1.0（旧版归档在 `history/`）：系数为 B&M 附录 E 的 Aerosonde 形状按翼展 / 翼面积缩放，D 级；`awr_f1` 惯量 0.29 / 0.40 / 0.63 kg·m²，静推力 26 N。VTOL（`awr_v1`）带了系数但还没有域（过渡段的旋翼 + 固定翼混合没有做），`L2Tier` 仍返回 630。
+
 ## 3. 与 Fast 对拍
 
 `python -m awr.phys.tier_compare` 的九个一致性用例（M24 §6.10 口径：起降、悬停、速度阶跃、限幅、偏航阶跃、航点、环绕、撞墙与失能坠地、恒风悬停）在 Fast 与 L2 上用**同一段驱动代码**运行，`report --tiers fast,l2`：
@@ -155,13 +174,35 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 
 档间差比地面域还小（位置 RMS 厘米级）：两边都在机体系算 ν̇，差异只有积分（半隐式欧拉 vs RK4）与世界系 / 机体系的换算。性能：单艇约 25 ms / 100 ms tick，基准 35 ms。
 
+## 3d. 固定翼域：与 Beard–McLain 六自由度基准和固定翼快速档对拍（5d）
+
+`python -m awr.phys.tier_compare run --set wing --tier l2|bm|fw`，`report --set wing --tiers l2,bm` 与 `l2,fw`。基准 `awr.phys.l2.bm_oracle`（`bm`）把 B&M 的 3.14–3.17 与 4.18–4.20 式按书写法实现：状态 (p_n, p_e, p_d, u, v, w, φ, θ, ψ, p, q, r, δe, δa, δr, δt)，NED / FRD，RK4，**控制器与引擎共用**，档间差只来自坐标写法、欧拉角 vs 四元数与积分方式。第二个对照 `awr.phys.fwkin`（`fw`）是现有的固定翼快速档（`awr.sim.fixedwing.kinematics` 的运动学飞行）套上同一跟踪器，衡量 L2 相对快速档多出的动力学差。7 个可对拍用例两对全部通过，发射 / 伞降 / 撞墙 / kill 只有引擎：
+
+| 用例 | 接口 | L2 ↔ B&M 档间差 | 容差 | L2 ↔ fw 档间差 | 容差 |
+|---|---|---|---|---|---|
+| f_speed_step 18 → 25 m/s | 一致（AIRBORNE） | 上升时间 0.12 s（4.91 / 5.02）、超调 0.3 %（7.3 / 7.0）、位置 RMS 0.52 m | 1.0 / 10 / 5.0 | 上升时间 0.20 s、超调 7.3 %（fw 无超调）、位置 RMS 5.2 m | 4.0 / 10 / 40 |
+| f_speed_limit 40 m/s 指令按 v_max 28 限幅 | 一致（峰值 28.54 / 28.52，上限 + 1.0） | 稳态 0.002 m/s（27.99 / 27.99） | 1.0 | 稳态 0.012 m/s（fw 正好 28） | 2.0 |
+| f_climb 3 m/s 爬升 20 s 后改平 | 一致 | 爬升率 0.061 m/s（3.05 / 3.11）、高度增量 0.18 m（59.9 / 59.8）、位置 RMS 0.64 m | 0.3 / 5.0 / 5.0 | 0.045 m/s、0.05 m、1.10 m | 0.5 / 15 / 40 |
+| f_goto 到 (900, 400, 130) 后盘旋 | 一致 | 到达 0.02 s（52.5 s）、盘旋半径 0.016 m（80.75 / 80.77）、位置 RMS 0.77 m | 3.0 / 8.0 / 10 | 0.028 s、0.33 m（80.43）、3.3 m | 6.0 / 20 / 60 |
+| f_waypoints 三航点 600 m 腿，20 m/s | 一致 | 位置 RMS 0.16 m、到达 0.001 s/100 m（27.9 / 58.4 / 89.2 s） | 10 / 1.0 | 3.7 m、0.005 s/100 m | 60 / 2.0 |
+| f_orbit R 100 m，18 m/s 一圈 | 一致 | 位置 RMS 0.28 m、半径 RMS 差 0.026 m（2.76 / 2.78）、绕圈时刻 0.003 s/100 m（35.7 s） | 10 / 5.0 / 1.0 | 4.6 m、0.84 m（fw 1.92）、0.044 | 60 / 15 / 3.0 |
+| f_wind_track 8 m/s 侧风中沿线 1200 m | 一致 | 位置 RMS 0.15 m、偏航距 RMS 两边都是 3.5 m（起始切入时最大 45 m）、对地速度 16.37 | 5.0 / 10 | 4.3 m、偏航距 4.7 m | 10 / 60 |
+| f_launch 弹射到 60 m 后盘旋 | 引擎独有 | GROUNDED → LIFTOFF（1.5 s，15.0 m/s = v_min + 1.5）→ 4 m/s 爬升 → 60 m 盘旋，AIRBORNE | — | — | — |
+| f_chute 80 m 巡航中伞降 | 引擎独有 | AIRBORNE → LANDING（5 m/s 额定下降、机体改平）→ TOUCHDOWN → GROUNDED | — | — | — |
+| f_wall 18 m/s 平飞撞墙 | 引擎独有 | COLLISION_WORLD（mesh），CRASHED | — | — | — |
+| f_kill 100 m 巡航中 kill | 引擎独有 | 无动力无操纵，螺旋下降，IMPACT（约 20 s，27 m/s），CRASHED | — | — | — |
+
+与 B&M 基准的差是厘米到分米级（同一方程、同一控制器，只差积分与姿态表示）；与快速档的差是米级（快速档没有舵面滞后、迎角、载荷因子与速度环超调），这就是 L2 相对 fw 多出的那部分动力学。性能：单机 250 Hz 约 35 ms / 100 ms tick，基准约 65 ms，快速档约 3 ms。
+
+第一版的四处偏差及修法：（1）协调转弯倾角符号——B&M 的 φ_c = atan(V_g χ̇ / g) 是 NED 顺时针为正，ENU 里要取负，否则越偏越转；（2）失速——迎角反馈 + 过宽的失速混合让稍大的爬升指令直接失速，改为需求迎角前馈 + 迎角上限 + 把混合锐度从 50 提到 100 并把 α0 挪到 cl_max 之外；（3）转弯中掉高——只有 P 的俯仰环顶不住倾斜配平，加升降舵积分并扣除协调转弯自带的俯仰角速度；（4）弹射脱轨后趴在地上——平导轨脱轨时机体仍在地面高度，被伞降触地那条"改平 + 摩擦"分支拖停，改为 12° 倾角的运动学导轨，脱轨即带正爬升率离地。
+
 ## 4. 怎么用
 
-- Env：`spec.physics = "l2"`（与 `kinematic / fast / realistic` 并列），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，`vehicles/usv` 里的 id（`otter`、`blueboat`、`wamv`）走海面域，空陆海可以混编在同一机队；固定翼 / VTOL 仍是 630。
-- 直接用：`L2Tier(uavs, spawn, world, grounded=…, vehicles=…, ground=…, water_z=…)`，接口同 `FastTier`；`set_wind(n×3)` 每 tick 写风，`set_current(n×2)` 写流（只有艇感到）；车永远落在地面上，艇永远浮在 `water_z` 上（`grounded` 只对空中设备有意义）。
-- 状态：车与艇用 `VehicleStatus.MOVING`（行驶 / 航行中），静止分别为 GROUNDED / `AFLOAT`，撞上或搁浅为 CRASHED；Env 的 `status.mode` 对应 `driving` / `afloat`。
-- 对拍：`python -m awr.phys.tier_compare run --tier l2 --out DIR`，`report --out DIR --tiers fast,l2`；地面域 `run --set ground --tier l2|st`，`report --set ground --tiers l2,st`；海面域 `run --set water --tier l2|fossen`，`report --set water --tiers l2,fossen`。
-- 保真档表：`python -m awr.sim.device ladder` 的 `l2` 列按"统一引擎有没有该设备族的域模型"判定，x500 另标 `+ gz`；陆行来自 `vehicles/ground`，海来自 `vehicles/usv`。
+- Env：`spec.physics = "l2"`（与 `kinematic / fast / realistic` 并列），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，`vehicles/usv` 里的 id（`otter`、`blueboat`、`wamv`）走海面域，多旋翼目录里带 `fw_dynamics` 的固定翼（`awr_f1`）走固定翼域，空陆海可以混编在同一机队；VTOL（`awr_v1`）仍是 630。
+- 直接用：`L2Tier(uavs, spawn, world, grounded=…, vehicles=…, ground=…, water_z=…)`，接口同 `FastTier`；`set_wind(n×3)` 每 tick 写风（多旋翼与固定翼感到），`set_current(n×2)` 写流（只有艇感到）；车永远落在地面上，艇永远浮在 `water_z` 上（`grounded` 只对空中设备有意义；固定翼 `grounded` 即在发射架上，只有 takeoff 能让它动）。
+- 状态：车与艇用 `VehicleStatus.MOVING`（行驶 / 航行中），静止分别为 GROUNDED / `AFLOAT`，撞上或搁浅为 CRASHED；Env 的 `status.mode` 对应 `driving` / `afloat`。固定翼用空中设备的词：GROUNDED（发射架）→ AIRBORNE → LANDING（伞降中）→ GROUNDED，飞行中触地 / 撞网格为 CRASHED。
+- 对拍：`python -m awr.phys.tier_compare run --tier l2 --out DIR`，`report --out DIR --tiers fast,l2`；地面域 `run --set ground --tier l2|st`，`report --set ground --tiers l2,st`；海面域 `run --set water --tier l2|fossen`，`report --set water --tiers l2,fossen`；固定翼域 `run --set wing --tier l2|bm|fw`，`report --set wing --tiers l2,bm` / `l2,fw`。
+- 保真档表：`python -m awr.sim.device ladder` 的 `l2` 列按"统一引擎有没有该设备族的域模型"判定，x500 另标 `+ gz`；陆行来自 `vehicles/ground`，海来自 `vehicles/usv`；固定翼按多旋翼目录的 `category: fixed_wing` 判，VTOL 行仍为"尚无 vtol 模型"。
 
 ## 5. 接下来（同一刚体、同一档位）
 
@@ -169,7 +210,7 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 
 1. ~~地面车 `ugv`~~：5b 已做（§2b、§3b）。还没做的：差速 / 滑移转向的专用运动学（现在 `drive.type` 只是标注，六轮漫游车按等效自行车处理）、Pacejka 非线性轮胎、悬挂。
 2. ~~无人艇 `usv`~~：5c 已做（§2c、§3c）。还没做的：横摇 / 纵摇 / 升沉（波浪）、单舵单桨与全回转推进的分配（`propulsion.type` 现在只接受 `twin_fixed` 的动力学）、风的 A 级系数。
-3. **固定翼 `fixed_wing` / `vtol`**：升阻力矩系数表 + 推进 + 协调转弯控制，与 `awr.sim.fixedwing` 快速档对拍。
+3. ~~固定翼 `fixed_wing`~~：5d 已做（§2d、§3d）。还没做的：VTOL `vtol` 域（旋翼 + 固定翼过渡），非对角惯量 J_xz，螺旋桨的扭矩 / 滑流效应，固定翼的滑跑起降（现在只有弹射 + 伞降），系数的 A / B 级来源（现在是 Aerosonde 形状缩放的 D 级）。
 4. numba 核（机群大时）；三个域过门后把 `physics = "realistic"` 切到统一引擎。
 5. `l3`（SITL）不在本步。
 
@@ -178,5 +219,6 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 - 新增 `tests/d3/phys/test_l2.py` 12 项：刚体与四元数助手、`quad_x` 布局 / 分配 / PX4 归一化权威、悬停与样本自洽、起降 / goto / 落地 / 失能坠地 / 确定性（两次 `pose_sha256` 相同）、速度与偏航阶跃、恒风倾角等于 SIH 标定值、撞墙与 IMPACT、非多旋翼拒绝、与 Fast 的接口一致（4 个用例）。
 - `tests/sensors/test_servo_ladder.py` 的保真档断言改为统一引擎口径。
 - `RefTracker` 的 `inner_pid=False` 缺省分支不变，gz 档行为不变；`Setpoint` 只加了带缺省值的字段。
+- 5d：新增 `tests/d3/phys/test_l2_fixedwing.py` 12 项：机型包参数与配平（巡航 / 最低速配平在包线内，多旋翼机型被拒 630）、速度阶跃与爬升保持及确定性（两次 `pose_sha256` 相同）、弹射起飞（地面指令不动、GROUND → LAUNCH → FLY、LIFTOFF 时刻与速度、导轨姿态、爬到 60 m 后盘旋）、伞降触地与 kill 触地、8 m/s 侧风沿线（偏航距、偏流角、对地速度）、空 / 固定翼 / 车混编（空中 takeoff 为空操作、车拒绝 630）、两个基准的内核名与只收空中指令、与 B&M 基准（爬升、环绕）和快速档（goto、侧风）接口一致且容差内（全部 7 × 2 用例由 `tier_compare --set wing` 跑）、引擎独有的撞墙。保真档断言改为含固定翼（`awr_f1` l2 可用，`awr_v1` 仍无）；`test_l2.py` 的"无域模型被拒"改用 VTOL。
 - 5c：新增 `tests/d3/phys/test_l2_usv.py` 18 项：机型包校验与装载、分配与轴限幅、基准 ODE 静止 / 定速自洽、速度阶跃精确停船与确定性（3 自由度：无横滚 / 俯仰 / 升沉）、流中保位（顶流、对地速度 0）与 kill 随流漂、搁浅与水位、空陆海混编（x500 + f1tenth + blueboat 同一档位）、环绕一圈后停、航行中 hover 不掉头、基准本身、与 Fossen 基准接口一致且容差内（8 用例）。`VehicleStatus.AFLOAT` 只有艇会报。
 - 5b：新增 `tests/d3/phys/test_l2_ugv.py` 17 项：机型包校验与装载、控制限幅、低速隐式解 = 运动学单轨、速度阶跃精确停车与确定性、坡面跟随（倾角 = atan 坡度、定速）、撞墙（mesh）与路缘（dsm）、空陆混编（x500 + f1tenth 同一档位，车拒绝 takeoff / land）、环绕、基准本身、与 ST 基准接口一致且容差内（8 用例）。`L2Tier` 重构成域分组（多旋翼代码路径不变，`test_l2.py` 12 项照旧通过）；保真档断言改为含陆行；`VehicleStatus.MOVING` 只有车会报，空中设备路径不变。

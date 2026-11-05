@@ -52,8 +52,8 @@ GIMBAL_TIERS = {"l1": "限速逼近", "l2": "二阶伺服（加速度上限、�
 # vehicle models the gz Realistic tier has today (awr.phys.tier_compare: "gz 只有 x500_d4d")
 GZ_MODELS = {"x500": "x500_d4d", "x500_sih": "x500_d4d"}
 # domain models of the unified L2 engine, by device family (catalog category); a family without a module has no l2 yet
-L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2.fixedwing", "vtol": "awr.phys.l2.fixedwing",
-              "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}
+L2_DOMAINS = {"multirotor": "awr.phys.l2.multirotor", "fixed_wing": "awr.phys.l2.fixedwing", "vtol": "awr.phys.l2.vtol",
+              "ugv": "awr.phys.l2.ugv", "usv": "awr.phys.l2.usv"}                         # vtol: no domain module yet (5d covers fixed_wing)
 
 L2_PACKAGES = "awr.phys.l2.ground"                 # ground / sea package loader of the engine (D3), imported by name
 PLANNED: list[dict] = []                          # device rows without a package yet (none: every family on the ladder has packages)

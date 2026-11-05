@@ -4,7 +4,7 @@
 # 加载器复算并与 derived 比对（FW-1、FW-2、FW-5、FW-8，≤ 1%）。弹射起飞、伞降回收（发射回收站 launcher，crewed：需地勤回收与
 # 复装，不参与无人值守 7×24）。
 schema: awr.vehicle.v1
-profile_version: 1.0.0
+profile_version: 1.1.0
 id: awr_f1
 display_name: "AWR-F1 长航时固定翼"
 kind: uav
@@ -40,6 +40,24 @@ airframe:
   r_loiter_default_m: 80.0
   launch: {type: catapult, t_s: 1.0, climb_mps: 4.0, alt_agl_m: 60.0}
   recovery: {type: parachute, descent_mps: 5.0, drift: wind}
+inertia_kgm2: {value: {xx: 0.29, yy: 0.40, zz: 0.63}, conf: D, src: "按 Aerosonde（13.5 kg、2.9 m）惯量以 m·b² 缩放（B&M 附录 E）；只用于统一引擎 L2"}
+fw_dynamics:
+  # 统一 L2 引擎固定翼域（awr.phys.l2.fixedwing，Beard & McLain 系数表形式）。无量纲系数形状取 Beard & McLain《Small Unmanned
+  # Aircraft》附录 E 的 Aerosonde（同级别 2.6–2.9 m 翼展机型），D 级模拟参考值；C_D0、e、C_Lmax 仍取 airframe 的值。
+  chord_m: {value: 0.250, conf: D, src: "wing_area_m2 / span_m"}
+  lift: {cl0: {value: 0.23, conf: D, src: "B&M 附录 E 形状"}, cl_alpha: {value: 5.61, conf: D, src: "同上"},
+         cl_q: {value: 7.95, conf: D, src: "同上"}, cl_de: {value: 0.13, conf: D, src: "同上"}}
+  drag: {cd_q: {value: 0.0, conf: D, src: "同上"}, cd_de: {value: 0.0135, conf: D, src: "同上"}}
+  pitch: {cm0: {value: 0.0135, conf: D, src: "同上"}, cm_alpha: {value: -2.74, conf: D, src: "同上"},
+          cm_q: {value: -38.21, conf: D, src: "同上"}, cm_de: {value: -0.99, conf: D, src: "同上"}}
+  side: {cy0: 0.0, cy_beta: {value: -0.83, conf: D, src: "同上"}, cy_p: 0.0, cy_r: 0.0,
+         cy_da: {value: 0.075, conf: D, src: "同上"}, cy_dr: {value: 0.19, conf: D, src: "同上"}}
+  roll: {cl0: 0.0, cl_beta: {value: -0.13, conf: D, src: "同上"}, cl_p: {value: -0.51, conf: D, src: "同上"},
+         cl_r: {value: 0.25, conf: D, src: "同上"}, cl_da: {value: 0.17, conf: D, src: "同上"}, cl_dr: {value: 0.0024, conf: D, src: "同上"}}
+  yaw: {cn0: 0.0, cn_beta: {value: 0.073, conf: D, src: "同上"}, cn_p: {value: -0.069, conf: D, src: "同上"},
+        cn_r: {value: -0.095, conf: D, src: "同上"}, cn_da: {value: -0.011, conf: D, src: "同上"}, cn_dr: {value: -0.069, conf: D, src: "同上"}}
+  controls: {de_max_deg: 25.0, da_max_deg: 25.0, dr_max_deg: 25.0, tau_servo_s: 0.05}
+  propulsion: {type: pusher, t_static_n: {value: 26.0, conf: D, src: "η_prop·p_max_w / v_min = 0.55·650/13.5（静推力按 v_min 处的功率推力取整）"}, tau_motor_s: 0.2}
 battery:
   cells: 6
   chemistry: liion
