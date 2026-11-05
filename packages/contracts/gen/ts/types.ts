@@ -1162,7 +1162,7 @@ export type Task = TaskSpec | TaskStatus
  */
 export type VehicleCatalogModelDetail = VehicleCatalogModelSummary & VehicleCatalogModelDetail1
 /**
- * Vehicle profile params.yaml (awr.vehicle.v1, schema 1.1). AWR-16 §11.2: every identifiable parameter is {value, conf A-D, src}; conf E values live only in rejected[]. Loader runs VH-1..VH-7 and rejects on failure (353). Keys snake_case with unit suffix; px4_params keeps PX4 names. Schema 1.1 (ADR-115, AWR-20 §7.3): required fields depend on frame.type (multirotor fields for quad_x, hex_x and the VTOL lift system; airframe for fixed_wing and vtol_quadplane); D1 files stay valid; catalog models carry signatures.
+ * Vehicle profile params.yaml (awr.vehicle.v1, schema 1.2). AWR-16 §11.2: every identifiable parameter is {value, conf A-D, src}; conf E values live only in rejected[]. Loader runs VH-1..VH-7 and rejects on failure (353). Keys snake_case with unit suffix; px4_params keeps PX4 names. Schema 1.2 (ADR-115, AWR-20 §7.3): required fields depend on frame.type (multirotor fields for quad_x, hex_x and the VTOL lift system; airframe for fixed_wing and vtol_quadplane); D1 files stay valid; catalog models carry signatures.
  *
  * This interface was referenced by `AwrContracts`'s JSON-Schema
  * via the `definition` "VehicleProfile".
@@ -16410,6 +16410,422 @@ export interface VehicleProfile1 {
     category: 'multirotor' | 'fixed_wing' | 'vtol'
     size_class?: 'light' | 'medium' | 'heavy'
     limits_default: string
+  }
+  /**
+   * 6-DoF coefficient table of the unified L2 engine's fixed-wing domain (Beard & McLain form; awr.phys.l2.fixedwing). Optional: without it the fixed wing flies the fw_kin fast tier only. inertia_kgm2 is required alongside it.
+   */
+  fw_dynamics?: {
+    /**
+     * mean aerodynamic chord (default wing_area_m2 / span_m)
+     */
+    chord_m?:
+      | number
+      | {
+          value: number
+          conf: 'A' | 'B' | 'C' | 'D'
+          src: string
+          check?: string
+        }
+    /**
+     * lift coefficients (C_D0, e and C_Lmax come from airframe)
+     */
+    lift: {
+      /**
+       * C_L0
+       */
+      cl0:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Lα, 1/rad
+       */
+      cl_alpha:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Lq (pitch rate, non-dimensional c/2V)
+       */
+      cl_q:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Lδe, 1/rad
+       */
+      cl_de:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * drag increments beyond C_D0 + C_L²/(π e AR)
+     */
+    drag?: {
+      /**
+       * C_Dq
+       */
+      cd_q?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Dδe, 1/rad
+       */
+      cd_de?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * pitching-moment coefficients (about c)
+     */
+    pitch: {
+      /**
+       * C_m0
+       */
+      cm0:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_mα, 1/rad
+       */
+      cm_alpha:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_mq
+       */
+      cm_q:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_mδe, 1/rad
+       */
+      cm_de:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * side-force coefficients
+     */
+    side: {
+      /**
+       * C_Y0
+       */
+      cy0?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Yβ, 1/rad
+       */
+      cy_beta:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Yp
+       */
+      cy_p?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Yr
+       */
+      cy_r?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Yδa, 1/rad
+       */
+      cy_da?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_Yδr, 1/rad
+       */
+      cy_dr?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * rolling-moment coefficients (about b)
+     */
+    roll: {
+      /**
+       * C_l0
+       */
+      cl0?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_lβ, 1/rad
+       */
+      cl_beta:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_lp
+       */
+      cl_p:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_lr
+       */
+      cl_r:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_lδa, 1/rad
+       */
+      cl_da:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_lδr, 1/rad
+       */
+      cl_dr?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * yawing-moment coefficients (about b)
+     */
+    yaw: {
+      /**
+       * C_n0
+       */
+      cn0?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_nβ, 1/rad
+       */
+      cn_beta:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_np
+       */
+      cn_p:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_nr
+       */
+      cn_r:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_nδa, 1/rad
+       */
+      cn_da?:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      /**
+       * C_nδr, 1/rad
+       */
+      cn_dr:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * control-surface limits and servo lag
+     */
+    controls: {
+      de_max_deg:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      da_max_deg:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      dr_max_deg:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      tau_servo_s:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
+    /**
+     * propeller: T = δt·min(t_static_n, eta_prop·p_max_w / V_a), first-order motor lag
+     */
+    propulsion: {
+      type: 'pusher' | 'tractor'
+      /**
+       * static thrust at full throttle
+       */
+      t_static_n:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+      tau_motor_s:
+        | number
+        | {
+            value: number
+            conf: 'A' | 'B' | 'C' | 'D'
+            src: string
+            check?: string
+          }
+    }
   }
 }
 /**

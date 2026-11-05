@@ -24,7 +24,7 @@ from typing import Any
 
 __all__ = ["install", "installed_runtime", "standby_warm"]
 
-_INSTALLED: dict[int, Any] = {}
+_KEY = "mission"                                     # the runtime lives in registry.plugins of the table it was installed into
 
 
 def install() -> Any:
@@ -39,7 +39,7 @@ def install() -> Any:
     from .tracker import STATE_FIELDS, FollowPathProvider, GotoRouteProvider, OrbitProvider
 
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None and "mission" in reg.blocks:
         return rt
     rt = M10Runtime()
@@ -77,7 +77,7 @@ def install() -> Any:
             MET.unregister_metric(name)
         if spec is None or spec.owner == "M10":
             MET.register_metric(name, fn, owner="M10")
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     _warm_kernels()
     return rt
 
@@ -115,7 +115,7 @@ def standby_warm() -> None:
 def installed_runtime() -> Any:
     from awr.sim.fleet.stages import registry as R
 
-    return _INSTALLED.get(id(R.registry()))
+    return R.registry().plugins.get(_KEY)
 
 
 if os.environ.get("AWR_M10_AUTOINSTALL", "1") != "0":

@@ -1,0 +1,110 @@
+# vehicles/awr_v1/params.yaml —— profile awr_v1 1.0.0（awr.vehicle.v1，schema 1.1；AWR-20 §4、§5、§7.3；ADR-096、ADR-115）
+# AWR-V1 垂起固定翼（4 + 1 复合翼，vtol_quadplane）：通用化名称的模拟参考机型（catalog.reference = true），全部参数为 D 级。
+# MC 模式复用 L1 多旋翼（升力系统字段按 AWR-20 §4.2 缩放规则；VH-4 以 VT-3 代替）；FW 模式由 M21 fw_kin 计算（ADR-096）；
+# 模式切换与悬停上限按 AWR-20 §5.4（过渡 15 s / 10 s，单架次悬停累计 ≤ 180 s）。VTOL 起降台（vtol_pad）自动降落与换电。
+schema: awr.vehicle.v1
+profile_version: 1.0.0
+id: awr_v1
+display_name: "AWR-V1 垂起固定翼"
+kind: uav
+status: placeholder
+frame: {type: vtol_quadplane, rotor_order: px4, body: frd}
+mass_kg: {value: 9.5, conf: D, src: "模拟参考值（AWR-04 §5.2）", check: "<= mtow_kg"}
+mtow_kg: {value: 11.0, conf: D, src: "同上"}
+inertia_kgm2: {value: {xx: 1.24, yy: 1.88, zz: 3.12}, conf: D, src: "机翼与机身杆件近似（AWR-20 §4.2），只影响 MC 模式姿态响应"}
+geometry:
+  wheelbase_m: {value: 1.250, conf: D, src: "升力桨对角（AWR-20 §4.2）"}
+  arm_xy_m: {value: 0.4419, conf: D, src: "1.250/2/√2"}
+  collision_radius_m: {value: 1.40, conf: D, src: "固定翼类取 max(b/2, L/2)"}
+  size_m: {value: {l: 1.60, w: 2.80, h: 0.45}, conf: D, src: "机长 1.6 m、翼展 2.8 m"}
+motor:
+  n: 4
+  t_max_n: {value: 46.58, conf: D, src: "由目标推重比 2.00 反推（升力系统，AWR-20 §4.2）"}
+  omega_max_rad_s: {value: 590.0, conf: D, src: "桨推力式 T = C_T·ρ·n²·D⁴（C_T ≈ 0.1）取整"}
+  k_f: {value: 1.338e-4, conf: D, src: "派生：t_max_n / omega_max_rad_s^2"}
+  km_m: {value: 0.016, conf: D, src: "x500 momentConstant"}
+  tau_s: {value: 0.08, conf: D, src: "18 in 升力桨的电机时间常数估计"}
+prop:
+  d_m: {value: 0.457, conf: D, src: "模拟参考值（约 18 in 升力桨）"}
+  c_rd: {value: 6.83e-4, conf: D, src: "ΣΩ_hover·c_rd = 0.120·m（ADR-022 同一口径）"}
+aero:
+  model: composite
+  cda_m2: {value: 0.095, conf: D, src: "CdA/m = 0.0100（MC 模式，x500 SIH 标定口径）"}
+airframe:
+  span_m: {value: 2.8, conf: D, src: "AWR-04 §5.2"}
+  length_m: {value: 1.6, conf: D, src: "AWR-04 §5.2"}
+  wing_area_m2: {value: 0.85, conf: D, src: "AWR-04 §5.2"}
+  cd0: {value: 0.045, conf: D, src: "AWR-04 §5.2（含升力杆与停转桨的阻力）"}
+  oswald_e: {value: 0.8, conf: D, src: "AWR-04 §5.2"}
+  cl_max: {value: 1.3, conf: D, src: "AWR-04 §5.2"}
+  eta_prop: {value: 0.55, conf: D, src: "AWR-04 §5.2"}
+  p_avionics_w: {value: 25.0, conf: D, src: "AWR-04 §5.2"}
+  p_max_w: {value: 1300.0, conf: D, src: "AWR-20 §5.1 设定（FW-6）"}
+  v_min_mps: 14.0
+  v_loiter_mps: 15.0
+  v_cruise_mps: 20.0
+  v_max_mps: 30.0
+  phi_max_deg: 30.0
+  roll_rate_max_deg_s: 40.0
+  tau_v_s: 2.0
+  tau_phi_s: 0.5
+  accel_max_mps2: 1.5
+  decel_max_mps2: 2.0
+  climb_max_mps: 3.0
+  sink_max_mps: 3.0
+  r_loiter_default_m: 80.0
+  launch: {type: vtol}
+  recovery: {type: vtol}
+vtol:
+  transition_fw_s: 15.0
+  transition_mc_s: 10.0
+  v_transition_mps: 14.0
+  p_hover_w: {value: 1300.0, conf: D, src: "AWR-04 §5.2；动量理论 709 W ÷ 悬停效率 0.65 ÷ 电驱 0.85 ≈ 1283 W（AWR-20 §4.2）"}
+  hover_max_s: 180.0
+  d_fw_min_m: 300.0
+  agl_transition_min_m: 30.0
+battery:
+  cells: 12
+  chemistry: liion
+  capacity_ah: {value: 22.0, conf: D, src: "模拟参考值"}
+  v_nominal_v: {value: 43.2, conf: D, src: "锂离子 3.6 V/节"}
+  capacity_wh: {value: 950.4, conf: D, src: "派生：43.2 V × 22 Ah"}
+  usable_frac: {value: 0.85, conf: D, src: "ADR-052"}
+  mass_kg: {value: 3.80, conf: D, src: "250 Wh/kg"}
+  v_range_v: [36.0, 50.4]
+  v_storage_v: 44.4
+  pack_id: awr_l12s22
+  packs_per_swap: 1
+limits_profiles:
+  default: awr_v1_std
+  awr_v1_std: {px4_params: {MPC_XY_VEL_MAX: 5.0, MPC_XY_CRUISE: 3.0, MPC_ACC_HOR: 2.0, MC_YAWRATE_MAX: 45.0, MPC_Z_VEL_MAX_UP: 2.5,
+                            MPC_Z_VEL_MAX_DN: 1.5, FW_AIRSPD_MIN: 14.0, FW_AIRSPD_TRIM: 20.0, FW_AIRSPD_MAX: 30.0, FW_R_LIM: 30.0,
+                            FW_T_CLMB_MAX: 3.0, FW_T_SINK_MAX: 3.0}, src: "AWR-20 §4.3：MC 模式 5 / 3 m/s、垂直 2.5 / 1.5 m/s；FW 段等于 airframe 物理限"}
+wind_rating_mps: {value: 14.0, conf: D, src: "模拟参考值（≤ v_cruise − 3，FW-7）"}
+fidelity: {default: fw_kin, supported: [l1, fw_kin]}
+model: model/model.yaml
+sensors:
+  eo: {file: sensors/eo_pod.yaml, default: true, removable: false}
+  lwir: {file: sensors/lwir100.yaml, default: true, removable: true}
+  nir_ill: {file: sensors/nir_ill_l.yaml, default: true, removable: true}
+  gnss: {file: sensors/gnss.yaml, default: true, removable: false}
+  imu: {file: sensors/imu.yaml, default: true, removable: false}
+acoustic: {lwa_hover_dba: 92.0, lwa_cruise_dba: 81.0, thrust_exp: 1.5, bpf_hz: 110.0, bpf_cruise_hz: 200.0, blades: 2, tonal_db: 12.0,
+           f_pk_hz: 1414.0, conf: D,
+           src: "AWR-04 §5.2、ADR-097；升力谱形 12 dB / 1414 Hz，推进谱形取 AWR-20 §4.4 的 10 dB / 1000 Hz（schema 只有一组字段）"}
+visual: {area_m2: {top: 1.00, side: 0.30, front: 0.18}, contrast_sky: -0.5, contrast_ground: 0.4,
+         lights_installed: {nav: true, strobe: true}, night_visible_m: 30}
+rcs_m2: {value: 0.20, conf: D, src: "AWR-04 §5.2"}
+ir: {motor_delta_t_k: 25.0}
+link: {model: awr_link_30k, range_m: 30000}
+nav: {hold_sigma_m: {rtk: {h: 0.02, v: 0.03}, gnss: {h: 1.0, v: 0.6}}}
+env_limits: {temp_c: [-20, 50]}
+capabilities: [nav.rtk, flight.hover, flight.loiter]
+labels:
+  reference: "模拟参考值，非任何真实产品"
+  recovery: "垂直起降、VTOL 起降台自动换电"
+catalog: {reference: true, category: vtol, size_class: heavy, limits_default: awr_v1_std}
+derived: {hover_thrust: 0.500, twr: 2.00, tilt_at_8mps_deg: 7.85, cda_per_mass_m2kg: 0.0100,
+          v_stall_mps: 11.73, aspect_ratio: 9.22, wing_loading_n_m2: 109.6, p_cruise_w: 431.2, p_loiter_w: 255.9,
+          endurance_cruise_s: 6745, endurance_loiter_s: 11363, r_min_loiter_m: 39.7, ld_max: 11.35,
+          endurance_mission_cruise_s: 6127, airframe_residual_kg: 4.79}

@@ -171,13 +171,14 @@ def test_ladder_reads_the_catalog_and_states_each_tier():
     assert q1["tiers"]["fw"]["status"] == "代码有、机型未声明"
     assert q1["sensors"]["eo"]["gimbal"]["servo_tier"] == "l1" and q1["sensors"]["eo"]["gimbal"]["rate_max_deg_s"] == 60
     assert by_id["awr_f1"]["tiers"]["fw"]["status"] == "可用"
-    assert doc["tiers"]["l2"]["status"] == "可用（统一引擎：multirotor、ugv、usv）" and doc["tiers"]["l3"]["status"] == "无"
+    assert doc["tiers"]["l2"]["status"] == "可用（统一引擎：fixed_wing、multirotor、ugv、usv）" and doc["tiers"]["l3"]["status"] == "无"
     assert doc["tiers"]["l2"]["domains"]["multirotor"] and doc["tiers"]["l2"]["domains"]["ugv"] and doc["tiers"]["l2"]["domains"]["usv"]
-    assert not doc["tiers"]["l2"]["domains"]["fixed_wing"]
+    assert doc["tiers"]["l2"]["domains"]["fixed_wing"] and not doc["tiers"]["l2"]["domains"]["vtol"]
     assert by_id["x500"]["tiers"]["l2"]["status"] == "可用（统一引擎 + gz）" and by_id["x500"]["tiers"]["l2"]["gz_model"] == "x500_d4d"
     assert sum(d["tiers"]["l2"]["gz_model"] is not None for d in doc["devices"]) == 2
-    assert {d["id"] for d in doc["devices"] if d["tiers"]["l2"]["status"].startswith("可用")} == {d["id"] for d in doc["devices"] if d.get("category") in ("multirotor", "ugv", "usv")}
-    assert by_id["awr_f1"]["tiers"]["l2"]["status"] == "无（统一引擎尚无 fixed_wing 模型）"
+    assert {d["id"] for d in doc["devices"] if d["tiers"]["l2"]["status"].startswith("可用")} == {d["id"] for d in doc["devices"] if d.get("category") in ("multirotor", "fixed_wing", "ugv", "usv")}
+    assert by_id["awr_f1"]["tiers"]["l2"]["status"] == "可用（统一引擎）" and by_id["awr_f1"]["tiers"]["l2"]["domain"] == "fixed_wing"
+    assert by_id["awr_v1"]["tiers"]["l2"]["status"] == "无（统一引擎尚无 vtol 模型）"
     car = by_id["f1tenth"]
     assert car["domain"] == "land" and car["tiers"]["l2"]["status"] == "可用（统一引擎）" and car["tiers"]["l0"]["status"] == "可用"
     assert car["tiers"]["l1"]["status"].startswith("不适用") and car["mass_kg"] == 3.74 and car["source"] == "ground/f1tenth/params.yaml"

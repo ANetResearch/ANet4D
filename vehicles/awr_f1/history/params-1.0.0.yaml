@@ -1,0 +1,82 @@
+# vehicles/awr_f1/params.yaml —— profile awr_f1 1.0.0（awr.vehicle.v1，schema 1.1；AWR-20 §5、§7.3、§7.8；ADR-096、ADR-115）
+# AWR-F1 长航时固定翼（推进式）：通用化名称的模拟参考机型（catalog.reference = true），全部参数为 D 级。固定翼不含 L1 字段（motor、
+# prop、aero、inertia_kgm2，schema 1.1 按构型条件必填）；运动学与能量由 M21 fw_kin（ADR-096）计算。派生值（AWR-20 §5.2）由
+# 加载器复算并与 derived 比对（FW-1、FW-2、FW-5、FW-8，≤ 1%）。弹射起飞、伞降回收（发射回收站 launcher，crewed：需地勤回收与
+# 复装，不参与无人值守 7×24）。
+schema: awr.vehicle.v1
+profile_version: 1.0.0
+id: awr_f1
+display_name: "AWR-F1 长航时固定翼"
+kind: uav
+status: placeholder
+frame: {type: fixed_wing, rotor_order: px4, body: frd}
+mass_kg: {value: 6.0, conf: D, src: "模拟参考值（AWR-04 §5.2）"}
+mtow_kg: {value: 7.0, conf: D, src: "同上"}
+geometry:
+  size_m: {value: {l: 1.4, w: 2.6, h: 0.35}, conf: D, src: "机长 1.4 m、翼展 2.6 m"}
+  collision_radius_m: {value: 1.3, conf: D, src: "max(b/2, L/2)"}
+airframe:
+  span_m: {value: 2.6, conf: D, src: "AWR-04 §5.2"}
+  length_m: {value: 1.4, conf: D, src: "AWR-04 §5.2"}
+  wing_area_m2: {value: 0.65, conf: D, src: "AWR-04 §5.2"}
+  cd0: {value: 0.035, conf: D, src: "AWR-04 §5.2"}
+  oswald_e: {value: 0.8, conf: D, src: "AWR-04 §5.2"}
+  cl_max: {value: 1.2, conf: D, src: "AWR-04 §5.2"}
+  eta_prop: {value: 0.55, conf: D, src: "AWR-04 §5.2"}
+  p_avionics_w: {value: 20.0, conf: D, src: "AWR-04 §5.2"}
+  p_max_w: {value: 650.0, conf: D, src: "AWR-20 §5.1 设定（FW-6）"}
+  v_min_mps: 13.5
+  v_loiter_mps: 13.5
+  v_cruise_mps: 18.0
+  v_max_mps: 28.0
+  phi_max_deg: 35.0
+  roll_rate_max_deg_s: 45.0
+  tau_v_s: 2.0
+  tau_phi_s: 0.5
+  accel_max_mps2: 1.5
+  decel_max_mps2: 2.0
+  climb_max_mps: 4.0
+  sink_max_mps: 3.0
+  r_loiter_default_m: 80.0
+  launch: {type: catapult, t_s: 1.0, climb_mps: 4.0, alt_agl_m: 60.0}
+  recovery: {type: parachute, descent_mps: 5.0, drift: wind}
+battery:
+  cells: 6
+  chemistry: liion
+  capacity_ah: {value: 22.0, conf: D, src: "模拟参考值"}
+  v_nominal_v: {value: 21.6, conf: D, src: "锂离子 3.6 V/节"}
+  capacity_wh: {value: 475.2, conf: D, src: "派生：21.6 V × 22 Ah"}
+  usable_frac: {value: 0.85, conf: D, src: "ADR-052"}
+  mass_kg: {value: 1.90, conf: D, src: "250 Wh/kg"}
+  v_range_v: [18.0, 25.2]
+  v_storage_v: 22.2
+  pack_id: awr_l6s22
+  packs_per_swap: 1
+limits_profiles:
+  default: awr_f1_std
+  awr_f1_std: {px4_params: {FW_AIRSPD_MIN: 13.5, FW_AIRSPD_TRIM: 18.0, FW_AIRSPD_MAX: 28.0, FW_R_LIM: 35.0,
+                            FW_T_CLMB_MAX: 4.0, FW_T_SINK_MAX: 3.0}, src: "等于 airframe 物理限"}
+wind_rating_mps: {value: 15.0, conf: D, src: "= v_cruise − 3（FW-7）"}
+fidelity: {default: fw_kin, supported: [fw_kin]}
+model: model/model.yaml
+sensors:
+  eo: {file: sensors/eo_pod.yaml, default: true, removable: false}
+  lwir: {file: sensors/lwir75.yaml, default: true, removable: true}
+  gnss: {file: sensors/gnss.yaml, default: true, removable: false}
+  imu: {file: sensors/imu.yaml, default: true, removable: false}
+acoustic: {lwa_cruise_dba: 80.0, thrust_exp: 1.5, bpf_cruise_hz: 200.0, blades: 2, tonal_db: 10.0, f_pk_hz: 1000.0,
+           conf: D, src: "AWR-04 §5.2、ADR-097"}
+visual: {area_m2: {top: 0.80, side: 0.25, front: 0.12}, contrast_sky: -0.5, contrast_ground: 0.4,
+         lights_installed: {nav: true, strobe: true}, night_visible_m: 30}
+rcs_m2: {value: 0.10, conf: D, src: "AWR-04 §5.2"}
+ir: {motor_delta_t_k: 15.0}
+link: {model: awr_link_30k, range_m: 30000}
+nav: {hold_sigma_m: {rtk: {h: 0.02, v: 0.03}, gnss: {h: 1.5, v: 1.0}}}
+env_limits: {temp_c: [-10, 45]}
+capabilities: [nav.rtk, flight.loiter, ops.crewed_recovery]
+labels:
+  reference: "模拟参考值，非任何真实产品"
+  recovery: "弹射起飞、伞降回收（发射回收站需地勤回收与复装）"
+catalog: {reference: true, category: fixed_wing, size_class: medium, limits_default: awr_f1_std}
+derived: {v_stall_mps: 11.10, aspect_ratio: 10.40, wing_loading_n_m2: 90.5, p_cruise_w: 201.4, p_loiter_w: 127.1,
+          endurance_cruise_s: 7221, endurance_loiter_s: 11437, r_min_loiter_m: 26.5, ld_max: 13.66, airframe_residual_kg: 3.5}

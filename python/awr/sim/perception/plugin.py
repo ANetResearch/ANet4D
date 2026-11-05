@@ -25,7 +25,7 @@ from .runtime import BLOCK, FIELDS, OWNER, PerceptionRuntime
 __all__ = ["QUERIES", "install", "runtime", "uninstall"]
 
 log = logging.getLogger("awr.sim.perception")
-_INSTALLED: dict[int, PerceptionRuntime] = {}
+_KEY = "perception"                                     # the runtime lives in registry.plugins of the table it was installed into
 ORDER = 175
 HZ = 125.0          # d1_250 每 2 tick；sandbox100 由按档调度表给出每 tick
 QUERIES = ("perception/vehicle", "perception/detections", "perception/tracks", "perception/feasibility", "perception/capture",
@@ -43,7 +43,7 @@ def _registry():
 
 def runtime(create: bool = True) -> PerceptionRuntime | None:
     R = _registry()
-    rt = _INSTALLED.get(id(R.registry()))
+    rt = R.registry().plugins.get(_KEY)
     if rt is None and create:
         return install()
     return rt
@@ -56,7 +56,7 @@ def uninstall() -> None:
     """从当前登记表撤销本插件的全部登记（测试用；sim-core 进程内不调用）。"""
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.pop(id(reg), None)
+    rt = reg.plugins.pop(_KEY, None)
     if rt is None:
         return
     reg.stages[:] = [s for s in reg.stages if s.name != "perception"]
@@ -113,7 +113,7 @@ def _warm_kernels() -> None:
 def install() -> PerceptionRuntime:
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None and BLOCK in (reg.entity_blocks.get("target") or {}) and "perception/vehicle" in reg.queries:
         return rt
     _warm_kernels()
@@ -213,7 +213,7 @@ def install() -> PerceptionRuntime:
     if not any(t.name == FIELD_TASK for t in reg.slow):
         R.register_slow_task(FIELD_TASK, field_task, period_wall_s=FIELD_TASK_PERIOD_S, budget_us=3000)
     _metrics()
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     return rt
 
 

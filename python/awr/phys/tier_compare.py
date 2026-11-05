@@ -38,6 +38,8 @@ Realistic 侧以测试构建的运动学注入（`Drone4DClock` `<inject>`，`in
   python -m awr.phys.tier_compare report --set ground --tiers l2,st --out DIR      # DIR/tier_compare.ground.l2-st.json
   python -m awr.phys.tier_compare run --set water --tier l2|fossen --out DIR       # 海面域：统一引擎 usv 对 Fossen 三自由度基准
   python -m awr.phys.tier_compare report --set water --tiers l2,fossen --out DIR   # DIR/tier_compare.water.l2-fossen.json
+  python -m awr.phys.tier_compare run --set wing --tier l2|bm|fw --out DIR         # 固定翼域：统一引擎对 Beard–McLain 六自由度基准 / 固定翼快速档
+  python -m awr.phys.tier_compare report --set wing --tiers l2,bm --out DIR        # DIR/tier_compare.wing.l2-bm.json（l2,fw 同理）
 """
 
 from __future__ import annotations
@@ -65,6 +67,7 @@ __all__ = [
     "REF_CASE",
     "SCHEMA",
     "WATER_CASES",
+    "WING_CASES",
     "BoxWorld",
     "Case",
     "CaseRun",
@@ -77,8 +80,11 @@ __all__ = [
     "m25_compare",
     "m25_digest",
     "pose_history_diff",
+    "run_bm",
     "run_case",
     "run_fast",
+    "run_fossen",
+    "run_fwkin",
     "run_l2",
     "run_realistic",
     "run_st",
@@ -464,6 +470,60 @@ WATER_CASES: tuple[Case, ...] = (
 )
 
 
+# 固定翼域用例（统一引擎 fixed_wing 域模型对 Beard–McLain 六自由度基准与固定翼快速档 fw_kin，`--set wing`）：机型 AWR-F1 级
+# （awr_f1：airframe 口径 + fw_dynamics 系数表）。空中出生即配平巡航（18 m/s，沿航向）；弹射起飞、伞降、kill、撞墙只有引擎
+# （基准与快速档不落地、无世界）。快速档的容差另给（`tol_by_tier.fw`：运动学档与六自由度的差本来就大于两个六自由度写法之间的差）。
+_WING_PATH = np.array([[600.0, 0.0, 100.0], [600.0, 600.0, 120.0], [0.0, 600.0, 100.0]])
+_WING_WALL = Box((400.0, -150.0, 0.0), (420.0, 150.0, 300.0))
+WING_CASES: tuple[Case, ...] = (
+    Case("f_speed_step", "巡航 18 → 25 m/s 空速阶跃 → 回 18", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 450,
+         {5: (_c("a1", "velocity", 5, vel_enu_mps=(25.0, 0.0, 0.0)),), 250: (_c("a1", "velocity", 250, vel_enu_mps=(18.0, 0.0, 0.0)),)},
+         expect_status={"a1": (A,)}, tol={"rise_s": 1.0, "overshoot_pct": 10.0, "pos_rms_m": 5.0},
+         params={"metric": "airspeed_step", "step_tick": 5, "v0_mps": 18.0, "v_mps": 25.0, "until_tick": 250,
+                 "tol_by_tier": {"fw": {"rise_s": 4.0, "overshoot_pct": 10.0, "pos_rms_m": 40.0}}}, vehicle="awr_f1"),
+    Case("f_speed_limit", "40 m/s 速度指令按 v_max 28 m/s 限幅", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 400,
+         {5: (_c("a1", "velocity", 5, vel_enu_mps=(40.0, 0.0, 0.0)),)},
+         expect_status={"a1": (A,)}, tol={"v_steady_mps": 1.0},
+         params={"metric": "velocity_limit", "v_cap_mps": 28.0, "cap_margin_mps": 1.0, "tol_by_tier": {"fw": {"v_steady_mps": 2.0}}}, vehicle="awr_f1"),
+    Case("f_climb", "18 m/s 巡航中 3 m/s 爬升 20 s 后改平", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 450,
+         {5: (_c("a1", "velocity", 5, vel_enu_mps=(18.0, 0.0, 3.0)),), 205: (_c("a1", "velocity", 205, vel_enu_mps=(18.0, 0.0, 0.0)),)},
+         expect_status={"a1": (A,)}, tol={"vz_hold_mps": 0.3, "z_gain_m": 5.0, "pos_rms_m": 5.0},
+         params={"metric": "climb_hold", "step_tick": 5, "until_tick": 205, "vz_mps": 3.0, "settle_s": 5.0,
+                 "tol_by_tier": {"fw": {"vz_hold_mps": 0.5, "z_gain_m": 15.0, "pos_rms_m": 40.0}}}, vehicle="awr_f1"),
+    Case("f_goto", "goto 到 (900, 400, 130)，18 m/s，到点盘旋", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 900,
+         {5: (_c("a1", "goto", 5, target_enu_m=(900.0, 400.0, 130.0), speed_mps=18.0),)},
+         expect_status={"a1": (A,)}, tol={"t_arrive_s": 3.0, "r_loiter_m": 8.0, "pos_rms_m": 10.0},
+         params={"metric": "goto_loiter", "start_tick": 5, "target": (900.0, 400.0, 130.0), "arrive_m": 40.0, "loiter_from_s": 75.0,
+                 "tol_by_tier": {"fw": {"t_arrive_s": 6.0, "r_loiter_m": 20.0, "pos_rms_m": 60.0}}}, vehicle="awr_f1"),
+    Case("f_waypoints", "三段航线 600 m / 600 m / 600 m，20 m/s，高度 100 → 120 → 100", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 1200,
+         {5: (_c("a1", "follow_path", 5, path_enu_m=_WING_PATH, speed_mps=20.0),)},
+         expect_status={"a1": (A,)}, tol={"pos_rms_m": 10.0, "arrival_s_per_100m": 1.0},
+         params={"metric": "waypoints", "start_tick": 5, "path": _WING_PATH.tolist(), "arrive_m": 40.0,
+                 "tol_by_tier": {"fw": {"pos_rms_m": 60.0, "arrival_s_per_100m": 2.0}}}, vehicle="awr_f1"),
+    Case("f_orbit", "半径 100 m、18 m/s 盘旋一圈", {"a1": ((100.0, 0.0, 100.0), math.pi / 2)}, 600,
+         {5: (_c("a1", "orbit", 5, orbit=OrbitSpec((0.0, 0.0, 100.0), 100.0, cw=False, turns=1.0), speed_mps=18.0),)},
+         expect_status={"a1": (A,)}, tol={"pos_rms_m": 10.0, "arrival_s_per_100m": 1.0, "radius_rms_m": 5.0},
+         params={"metric": "orbit", "start_tick": 5, "center": (0.0, 0.0, 100.0), "radius_m": 100.0,
+                 "tol_by_tier": {"fw": {"pos_rms_m": 60.0, "arrival_s_per_100m": 3.0, "radius_rms_m": 15.0}}}, vehicle="awr_f1"),
+    Case("f_wind_track", "8 m/s 侧风中沿 x 轴航线 1200 m（偏流修正）", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 800,
+         {5: (_c("a1", "follow_path", 5, path_enu_m=np.array([[1200.0, 0.0, 100.0]]), speed_mps=18.0),)}, wind=((0.0, 8.0, 0.0), 0),
+         expect_status={"a1": (A,)}, tol={"xtrack_m": 5.0, "pos_rms_m": 10.0},
+         params={"metric": "track_hold", "settle_s": 20.0, "tol_by_tier": {"fw": {"xtrack_m": 10.0, "pos_rms_m": 60.0}}}, vehicle="awr_f1"),
+    Case("f_launch", "弹射起飞至 60 m 后盘旋（只有引擎）", {"a1": ((0.0, 0.0, 0.0), 0.0)}, 600, {5: (_c("a1", "takeoff", 5, alt_m=60.0),)},
+         grounded=("a1",), expect_status={"a1": (G_, A)}, expect_contacts={"a1": ("LIFTOFF",)}, tol={"t_reach_s": 5.0},
+         params={"metric": "launch", "alt_m": 60.0, "takeoff_tick": 5, "oracle": False}, vehicle="awr_f1"),
+    Case("f_chute", "80 m 巡航中伞降回收（只有引擎）", {"a1": ((0.0, 0.0, 80.0), 0.0)}, 400, {20: (_c("a1", "land", 20),)},
+         expect_status={"a1": (A, L_, G_)}, expect_contacts={"a1": ("TOUCHDOWN",)}, tol={"descent_mps": 1.0},
+         params={"metric": "chute", "land_tick": 20, "descent_mps": 5.0, "oracle": False}, vehicle="awr_f1"),
+    Case("f_wall", "18 m/s 平飞撞墙（只有引擎）", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 400, {5: (_c("a1", "velocity", 5, vel_enu_mps=(18.0, 0.0, 0.0)),)},
+         boxes=(_WING_WALL,), expect_status={"a1": (A, C_)}, expect_contacts={"a1": ("COLLISION_WORLD",)}, tol={"t_crash_s": 0.5, "crash_pos_m": 0.5},
+         params={"metric": "contact_crash", "oracle": False}, vehicle="awr_f1"),
+    Case("f_kill", "100 m 巡航中 kill：无动力无操纵直至触地（只有引擎）", {"a1": ((0.0, 0.0, 100.0), 0.0)}, 1200, {10: (_c("a1", "kill", 10),)},
+         expect_status={"a1": (A, C_)}, expect_contacts={"a1": ("IMPACT",)}, tol={"t_crash_s": 0.5, "crash_pos_m": 0.5},
+         params={"metric": "contact_crash", "oracle": False}, vehicle="awr_f1"),
+)
+
+
 # ---------------------------------------------------------------------------------------------------------------- 运行
 @dataclass
 class CaseRun:
@@ -603,8 +663,37 @@ def run_fossen(case: Case) -> CaseRun:
     return run_case(case, tier)
 
 
-RUNNERS = {"fast": run_fast, "l2": run_l2, "st": run_st, "fossen": run_fossen}
-ORACLES = ("st", "fossen")
+def run_bm(case: Case) -> CaseRun:
+    """The Beard–McLain 6-DoF oracle (`awr.phys.l2.bm_oracle`) on the fixed-wing cases: same commands, tracker and controller,
+    the textbook equations (NED / FRD, Euler angles) with RK4 instead of the engine's rigid body (airborne only)."""
+    from awr.phys.l2.bm_oracle import BMOracleTier
+
+    tier = BMOracleTier(case.uavs, dict(case.spawn), None, vehicles=dict.fromkeys(case.uavs, case.vehicle), tick_ms=TICK_MS,
+                        history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None)
+    return run_case(case, tier, pre_tick=_wind_pre(case, tier))
+
+
+def run_fwkin(case: Case) -> CaseRun:
+    """The fixed-wing fast tier (`awr.phys.fwkin`, the sandbox's fw_kin kinematics) on the fixed-wing cases (airborne only)."""
+    from awr.phys.fwkin import FwKinTier
+
+    tier = FwKinTier(case.uavs, dict(case.spawn), None, vehicles=dict.fromkeys(case.uavs, case.vehicle), tick_ms=TICK_MS,
+                     history_s=case.n_ticks * TICK_MS / 1000 + 2.0, retain_s=None)
+    return run_case(case, tier, pre_tick=_wind_pre(case, tier))
+
+
+def _wind_pre(case: Case, tier):
+    if case.wind is None:
+        return None
+    wind = ConstWind(*case.wind)
+
+    def pre(k: int) -> None:
+        tier.set_wind(np.tile(wind.at(k * TICK_NS), (len(case.uavs), 1)))
+    return pre
+
+
+RUNNERS = {"fast": run_fast, "l2": run_l2, "st": run_st, "fossen": run_fossen, "bm": run_bm, "fw": run_fwkin}
+ORACLES = ("st", "fossen", "bm", "fw")            # baselines without a world: engine-only cases (params["oracle"] = False) are skipped on them
 
 
 def compose_case_sdf(case: Case, endpoint: str, *, uavs_z: Mapping[str, float] | None = None, field_wind: bool = False) -> str:
@@ -955,6 +1044,52 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         win = t < p["until_tick"] * TICK_MS / 1000
         out["rise_s"], out["overshoot_pct"] = _rise(t[win], s[win, 7], t0, p["v_mps"])
         out["onset_s"] = _onset(t, s, t0)
+    elif kind == "airspeed_step":
+        # a step from v0 to v1 of a vehicle already under way: rise 10–90 % of the change, overshoot in % of the change
+        t0 = p["step_tick"] * TICK_MS / 1000
+        win = t < p["until_tick"] * TICK_MS / 1000
+        spd = np.linalg.norm(s[win, 7:9], axis=1) - p["v0_mps"]
+        out["rise_s"], out["overshoot_pct"] = _rise(t[win], spd, t0, p["v_mps"] - p["v0_mps"])
+        tail = (t >= p["until_tick"] * TICK_MS / 1000 - 3.0) & win
+        out["v_steady_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
+        out["onset_s"] = _onset(t, s, t0)
+    elif kind == "climb_hold":
+        t0, t1 = p["step_tick"] * TICK_MS / 1000, p["until_tick"] * TICK_MS / 1000
+        hold = (t >= t0 + p["settle_s"]) & (t < t1)
+        out["vz_hold_mps"] = float(np.mean(s[hold, 9]))
+        out["z_gain_m"] = float(s[np.searchsorted(t, t1), 2] - s[np.searchsorted(t, t0), 2])
+        out["z_end_m"] = float(s[-1, 2])
+        out["onset_s"] = _onset(t, s, t0)
+    elif kind == "goto_loiter":
+        tgt = np.asarray(p["target"], np.float64)
+        t0 = p["start_tick"] * TICK_MS / 1000
+        d = np.linalg.norm(s[:, 0:2] - tgt[:2], axis=1)
+        out["t_arrive_s"] = (lambda x: None if x is None else x - t0)(_first_t(t, (t >= t0) & (d < p["arrive_m"])))
+        tail = t >= p["loiter_from_s"]
+        out["r_loiter_m"] = float(np.mean(d[tail]))
+        out["r_loiter_std_m"] = float(np.std(d[tail]))
+        out["z_err_m"] = float(np.mean(np.abs(s[tail, 2] - tgt[2])))
+        out["onset_s"] = _onset(t, s, t0)
+    elif kind == "track_hold":
+        tail = t >= p["settle_s"]
+        out["xtrack_m"] = float(np.mean(np.abs(s[tail, 1])))
+        out["xtrack_max_m"] = float(np.max(np.abs(s[tail, 1])))
+        out["v_ground_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
+    elif kind == "launch":
+        z_goal = s[0, 2] + p["alt_m"]
+        t_to = p["takeoff_tick"] * TICK_MS / 1000
+        out["t_reach_s"] = (lambda x: None if x is None else x - t_to)(_first_t(t, (t >= t_to) & (s[:, 2] >= z_goal - 3.0)))
+        lo = [c for c in run.contacts if c["uav"] == u0 and c["kind"] == "LIFTOFF"]
+        out["t_liftoff_s"] = lo[0]["t_ns"] / NS - t_to if lo else None
+        out["v_liftoff_mps"] = lo[0]["speed_mps"] if lo else None
+        out["z_end_m"] = float(s[-1, 2])
+    elif kind == "chute":
+        t_l = p["land_tick"] * TICK_MS / 1000
+        td = [c for c in run.contacts if c["uav"] == u0 and c["kind"] == "TOUCHDOWN"]
+        out["t_touchdown_s"] = td[0]["t_ns"] / NS - t_l if td else None
+        mid = (t >= t_l + 4.0) & (s[:, 2] > s[0, 2] * 0.3)
+        out["descent_mps"] = float(-np.mean(s[mid, 9])) if mid.any() else None
+        out["z_rest_m"] = float(s[-1, 2])
     elif kind == "velocity_limit":
         tail = t >= t[-1] - 2.0
         out["v_steady_mps"] = float(np.mean(np.linalg.norm(s[tail, 7:9], axis=1)))
@@ -969,8 +1104,9 @@ def case_metrics(case: Case, run: CaseRun) -> dict:
         path = np.asarray(p["path"], np.float64)
         t0 = p["start_tick"] * TICK_MS / 1000
         arr, ta, start = [], t0, s[0, 0:3]
+        r_arr = float(p.get("arrive_m", ARRIVE_M))
         for wp in path:
-            x = _first_t(t, (t >= ta) & (np.linalg.norm(s[:, 0:3] - wp, axis=1) < ARRIVE_M))
+            x = _first_t(t, (t >= ta) & (np.linalg.norm(s[:, 0:3] - wp, axis=1) < r_arr))
             arr.append(None if x is None else x - t0)
             if x is None:
                 break
@@ -1076,21 +1212,21 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
         if not ok:
             fails.append(f"command onset is not within (0, {ONSET_MAX_S}] s after the apply tick")
     iface["pass"] = not fails
-    # 动力学差异
+    # 动力学差异（容差按被比的一侧可另给：params["tol_by_tier"][lb]）
     diffs: dict[str, Any] = {}
-    tol = dict(case.tol)
+    tol = dict((case.params.get("tol_by_tier") or {}).get(lb) or case.tol)
     pos_rms = {u: float(np.sqrt(np.mean(np.sum((fast.state[u][:, 0:3] - real.state[u][:, 0:3]) ** 2, axis=1)))) for u in case.uavs}
     if "pos_rms_m" in tol:
         diffs["pos_rms_m"] = max(pos_rms.values())
     for k in ("t_reach_s", "t_touchdown_s", "vz_touchdown_mps", "rise_s", "t90_s", "tilt_deg", "radius_rms_m", "v_steady_mps", "t_arrive_s",
-              "v_hold_mps"):
+              "v_hold_mps", "vz_hold_mps", "z_gain_m", "r_loiter_m", "descent_mps"):
         if k in tol:
             diffs[k] = _diff(ma.get(k), mb.get(k))
     if "overshoot_pct" in tol:
         diffs["overshoot_pct"] = _diff(ma.get("overshoot_pct"), mb.get("overshoot_pct"))
-    for k in ("drift_max_m", "offset_steady_m", "rest_err_m", "z_err_m"):
+    for k in ("drift_max_m", "offset_steady_m", "rest_err_m", "z_err_m", "xtrack_m"):
         if k in tol:
-            diffs[k] = max(ma[k], mb[k])                                            # 两档各自的上界（悬停漂移、定点偏差、停车误差、地形跟随）
+            diffs[k] = max(ma[k], mb[k])                                            # 两档各自的上界（悬停漂移、定点偏差、停车误差、地形跟随、偏航距）
     kind = case.metric
     if "arrival_s_per_100m" in tol:
         if kind == "waypoints":
@@ -1118,7 +1254,7 @@ def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, st
         iface["limit_cap"] = {"cap_mps": cap, f"{la}_max_mps": ma["v_max_mps"], f"{lb}_max_mps": mb["v_max_mps"], "pass": ok_cap}
         if not ok_cap:
             iface["pass"] = False
-            fails.append("speed above the 12 m/s limit")
+            fails.append(f"speed above the {case.params['v_cap_mps']:g} m/s limit")
     return {"id": case.id, "title": case.title, "interface": iface, "failures": fails,
             "metrics": {la: ma, lb: mb}, "tiers": [la, lb], "pos_rms_m": pos_rms,
             "diff": diffs, "tol": tol, "within": within, "tol_pass": all(within.values()),
@@ -1159,7 +1295,7 @@ def build_report(cases: Sequence[dict], *, sampling: dict | None = None, m25: di
 
 
 # ---------------------------------------------------------------------------------------------------------------- CLI
-SETS = {"air": CASES, "ground": GROUND_CASES, "water": WATER_CASES}
+SETS = {"air": CASES, "ground": GROUND_CASES, "water": WATER_CASES, "wing": WING_CASES}
 
 
 def _cases(sel: str | None, set_: str = "air") -> list[Case]:
@@ -1174,10 +1310,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m awr.phys.tier_compare")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--tier", choices=("fast", "l2", "st", "fossen", "realistic"), required=True)
+    r.add_argument("--tier", choices=("fast", "l2", "st", "fossen", "bm", "fw", "realistic"), required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--cases")
-    r.add_argument("--set", default="air", choices=tuple(SETS), help="case set: air (x500, Fast / L2 / gz), ground (L2 / ST oracle) or water (L2 / Fossen oracle)")
+    r.add_argument("--set", default="air", choices=tuple(SETS),
+                   help="case set: air (x500, Fast / L2 / gz), ground (L2 / ST oracle), water (L2 / Fossen oracle) or wing (L2 / Beard–McLain oracle / fw_kin)")
     r.add_argument("--launcher", default="local")
     r.add_argument("--image", default="d3-gz:dev")
     m = sub.add_parser("m25")
@@ -1188,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--dz", type=float, default=0.0)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
-    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2, l2,st or l2,fossen")
+    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2, l2,st, l2,fossen, l2,bm or l2,fw")
     p.add_argument("--set", default="air", choices=tuple(SETS))
     a = ap.parse_args(argv)
     out = Path(a.out)

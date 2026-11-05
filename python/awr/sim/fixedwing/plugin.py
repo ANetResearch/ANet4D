@@ -19,7 +19,7 @@ from .runtime import FW_BLOCK, FW_FIELDS, FwRuntime
 
 __all__ = ["install", "runtime"]
 
-_INSTALLED: dict[int, FwRuntime] = {}
+_KEY = "fixedwing"                                     # the runtime lives in registry.plugins of the table it was installed into
 
 
 def _replace_provider(rt: FwRuntime) -> None:
@@ -43,7 +43,7 @@ def install() -> FwRuntime:
     from awr.sim.fleet.stages import registry as R
 
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None:
         return rt
     rt = FwRuntime()
@@ -61,14 +61,14 @@ def install() -> FwRuntime:
     if "fw/state" not in reg.queries:
         R.register_query("fw/state", rt.q_state)
     _replace_provider(rt)
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     return rt
 
 
 def runtime() -> FwRuntime | None:
     from awr.sim.fleet.stages import registry as R
 
-    return _INSTALLED.get(id(R.registry()))
+    return R.registry().plugins.get(_KEY)
 
 
 install()

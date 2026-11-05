@@ -33,7 +33,7 @@ from .stage import EVERY, ORDER, PHASE, make_stage
 __all__ = ["install", "installed", "runtime", "uninstall", "vehicle_command"]
 
 log = logging.getLogger("awr.sim.sensors")
-_INSTALLED: dict[int, SensorRuntime] = {}
+_KEY = "sensors"                                     # the runtime lives in registry.plugins of the table it was installed into
 _DESCRIBER = [False]
 
 WRITES = tuple(f"{BLOCK}.{f}" for f in FIELDS) + tuple(f"{PAYLOAD_BLOCK}.{f}" for f in PAYLOAD_FIELDS)
@@ -48,7 +48,7 @@ def _registry():
 def install() -> SensorRuntime:
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.get(id(reg))
+    rt = reg.plugins.get(_KEY)
     if rt is not None:
         return rt
     rt = SensorRuntime()
@@ -64,7 +64,7 @@ def install() -> SensorRuntime:
     R.register_slow_task("m13.lidar_scan", rt.scanner.run_slow, budget_us=300)
     _register_commands(rt)
     _register_optional_hooks(rt)
-    _INSTALLED[id(reg)] = rt
+    reg.plugins[_KEY] = rt
     _warm_kernels()
     return rt
 
@@ -214,18 +214,21 @@ def _conf_expected(profile_id: str, p_uav: Any, p_tgt: Any, capability: str, env
 
 def runtime() -> SensorRuntime | None:
     R = _registry()
-    return _INSTALLED.get(id(R.registry()))
+    return R.registry().plugins.get(_KEY)
 
 
 def installed() -> dict[int, SensorRuntime]:
-    return dict(_INSTALLED)
+    """The runtime installed into the current registry, keyed by that registry's id (empty when none)."""
+    reg = _registry().registry()
+    rt = reg.plugins.get(_KEY)
+    return {} if rt is None else {id(reg): rt}
 
 
 def uninstall() -> None:
     """测试用：从当前登记表移除本模块登记的 stage、状态块与慢任务。"""
     R = _registry()
     reg = R.registry()
-    rt = _INSTALLED.pop(id(reg), None)
+    rt = reg.plugins.pop(_KEY, None)
     if rt is None:
         return
     reg.stages[:] = [s for s in reg.stages if s.name != "sensors"]
