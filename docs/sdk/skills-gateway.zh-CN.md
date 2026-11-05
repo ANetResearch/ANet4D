@@ -89,8 +89,8 @@ landed ──第一条运动技能──▶ takeoff ──到达 agl − 3 m─�
 CHIMERA 分支 `anet4d-interface`：`chimera/commander/skills.py`、`realtime.py`、`chimera/sandbox/projection.py`、`telemetry.py` 改为从
 Anet4D 导入；`commander/terrain.py` 的 `TerrainMap` 继承 `GridTerrain`（保留派生 2 m 层优先）；`sandbox/bridge.py` 的 `DecisionBridge`
 继承网关的桥，账本放在 `pre_validate`，报告校验经 `reports=` 注入；`sandbox/server.py` 的 `Gateway` 继承网关基类，只剩会话准入、运行
-与评分；`commander/harness.py` 的逐机阶段与逐 tick 动作改用 `SkillFleet`；`drone4d.agent` 改为 `anet4d.agent`。CHIMERA 自己的测试
-在 Anet4D 开发检出上通过，等价见证见 §7。
+与评分；`commander/harness.py` 的逐机阶段与逐 tick 动作改用 `SkillFleet`；`drone4d.agent` 改为 `anet4d.agent`。CHIMERA 自己的全量测试
+在同一 Anet4D 工作树上 1945 通过、88 跳过、27 失败，这 27 项在切换前的 CHIMERA `main` 上同样失败（按其钉住的上游写成），分支没有新增失败；等价见证见 §7。
 
 CHIMERA 在 dmax 上运行的是钉住的上游 `705a1be` 加 4 个本地补丁；其中 3 个（`realistic-civil-world`、`gimbal-noise-units`、
 `vegetation-layer`）在当前 `main` 上不再适用。CHIMERA 真正切到新接口运行，须先把这些补丁重做或合入上游并升级钉版，登记为 F-153。

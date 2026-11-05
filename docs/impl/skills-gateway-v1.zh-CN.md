@@ -43,6 +43,9 @@ CHIMERA 分支 `anet4d-interface`（工作树 `chimera-p6`）与切换前的 `ma
 两侧 `flight_s` 均为 uav-01 124.9 s、uav-02 114.9 s，1250 tick，1 条报告，125 s 由计划宣告 done。脚本在会话暂存区
 `p6/witness.py`，产物在开发机 `.tools/p6-witness/`（不入库）。
 
+CHIMERA 分支的全量 `tests/`（同一 Anet4D 工作树）：1945 通过、88 跳过、27 失败；这 27 项在切换前的 `main` 上同样失败（按钉住的上游
+`705a1be` 加补丁写成，如 `Director(place_arrival_radius_m=…)`、`ActorFrame(speed=…)` 在当前 Anet4D `main` 上不存在），分支没有新增失败。
+
 ## 4. 没做的与后续
 
 - CHIMERA 在 dmax 上钉住上游 `705a1be` 加 4 个本地补丁，其中 3 个在当前 `main` 上不再适用；CHIMERA 真正在新接口上运行须先重做或合入
