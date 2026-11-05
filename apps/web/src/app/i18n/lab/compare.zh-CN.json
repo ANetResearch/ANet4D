@@ -35,6 +35,7 @@
  "lab.compare.readout": "快速仿真 {fast} · 高保真仿真 {real} · 位置差 {d} m",
  "lab.compare.tier.fast": "快速仿真",
  "lab.compare.tier.realistic": "高保真仿真",
+ "lab.compare.tier.gz": "gz 锁步",
  "lab.compare.meta.wind": "风 {mode}，σ_turb = {sigma}",
  "lab.compare.meta.pass": "{n} / {total} 个用例通过",
  "lab.compare.meta.fail": "{n} / {total} 个用例通过，报告未通过",

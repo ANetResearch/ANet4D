@@ -1,4 +1,4 @@
-// 快速仿真（Fast）与高保真仿真（Realistic，Gazebo Sim）档间对照的数据层（D3-AC-35"档间差异报告 `tier_compare.json`（位置 RMS、到达时刻差、
+// 快速仿真（Fast）与第二档（报告 `tiers[1]`：ADR-226 后为 gz 锁步 `gz`，封板前的制品为 `realistic`）档间对照的数据层（D3-AC-35"档间差异报告 `tier_compare.json`（位置 RMS、到达时刻差、
 // 指标差）带容差"；AWR-05 §5.3.6 档间差异报告行；M24 §6.10.6、§6.10.7、FR-081、AC-016、AC-028；AWR-14 §21.10；UX-AC-097）。
 // 制品由 `python -m awr.phys.tier_compare run|m25|report --out DIR` 写在同一目录，内部经 BN-54 `GET /runs/{rid}/artifacts/tier_compare/{file}` 读取：
 // - `tier_compare.json`（`drone4d.phys.tier_compare.v1`，`build_report`）：机型、时钟档、风模式、力律、碰撞源、容差状态；`cases[]` 的
@@ -10,8 +10,11 @@
 import { readNpz, type NpyArray } from './npz'
 
 export const TIER_COMPARE_SCHEMA = 'drone4d.phys.tier_compare.v1'
+/** 缺省两档名（报告没有 `tiers` 时）：封板前制品的第二档叫 `realistic`，ADR-226 之后写出的叫 `gz` */
 export const TIERS = ['fast', 'realistic'] as const
-export type Tier = (typeof TIERS)[number]
+export type Tier = string
+/** 报告的两档名：`tiers[0]` 为快速仿真一侧，`tiers[1]` 为对照一侧（页面的 `real*` 字段都指它） */
+export type TierPair = readonly [Tier, Tier]
 export const REPORT_FILE = 'tier_compare.json'
 /** 运行 id（采集运行为命名，基准运行为 run-<10 位 base32>；与 /lab/runs/:rid 相同） */
 export const RUN_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
@@ -85,6 +88,8 @@ export interface Sampling {
 export interface M25Bytewise { streams: { key: string; sha256: string[]; frames: number | null }[]; world: string | null; renderer: string | null; pass: boolean }
 export interface TierCompareDoc {
   schema: string
+  /** 两档名：`[0]` 快速仿真一侧，`[1]` 对照一侧（gz，封板前制品为 realistic） */
+  tiers: TierPair
   generatedUtc: string | null
   vehicle: string | null
   clockProfile: { name: string | null; mainHz: number | null; physicsHz: number | null } | null
@@ -130,26 +135,27 @@ function metricMap(x: unknown): Record<string, MetricValue> {
   }
   return out
 }
-function seqChecks(x: unknown): Record<string, SeqCheck> {
+function seqChecks(x: unknown, [ta, tb]: TierPair): Record<string, SeqCheck> {
   const out: Record<string, SeqCheck> = {}
   for (const [u, v] of Object.entries(obj(x))) {
     if (!isObj(v)) continue
-    out[u] = { fast: strs(v.fast), realistic: strs(v.realistic), expected: strs(v.expected), pass: bool(v.pass) }
+    out[u] = { fast: strs(v[ta]), realistic: strs(v[tb]), expected: strs(v.expected), pass: bool(v.pass) }
   }
   return out
 }
 
-function parseInterface(x: unknown): CaseInterface {
+function parseInterface(x: unknown, tiers: TierPair): CaseInterface {
+  const [ta, tb] = tiers
   const i = obj(x)
   const g = isObj(i.pose_history_grid) ? i.pose_history_grid : null
   const o = isObj(i.command_onset) ? i.command_onset : null
   const l = isObj(i.limit_cap) ? i.limit_cap : null
   return {
     dispatchEqual: typeof i.dispatch_equal === 'boolean' ? i.dispatch_equal : null,
-    status: seqChecks(i.status), contacts: seqChecks(i.contacts),
+    status: seqChecks(i.status, tiers), contacts: seqChecks(i.contacts, tiers),
     grid: g ? { samples: num(g.samples), tBitwise: bool(g.t_bitwise), quatUnit: bool(g.quat_unit), pass: bool(g.pass) } : null,
-    onset: o ? { fastS: num(o.fast_s), realisticS: num(o.realistic_s), maxS: num(o.max_s), pass: bool(o.pass) } : null,
-    limitCap: l ? { capMps: num(l.cap_mps), fastMaxMps: num(l.fast_max_mps), realisticMaxMps: num(l.realistic_max_mps), pass: bool(l.pass) } : null,
+    onset: o ? { fastS: num(o[`${ta}_s`]), realisticS: num(o[`${tb}_s`]), maxS: num(o.max_s), pass: bool(o.pass) } : null,
+    limitCap: l ? { capMps: num(l.cap_mps), fastMaxMps: num(l[`${ta}_max_mps`]), realisticMaxMps: num(l[`${tb}_max_mps`]), pass: bool(l.pass) } : null,
     pass: bool(i.pass),
   }
 }
@@ -166,7 +172,8 @@ export function diffRows(diff: Obj, tol: Obj, within: Obj): DiffRow[] {
   })
 }
 
-function parseCase(x: unknown): TierCase {
+function parseCase(x: unknown, tiers: TierPair): TierCase {
+  const [ta, tb] = tiers
   if (!isObj(x)) throw new TierCompareDocError('case', 'case is not an object')
   const id = str(x.id)
   if (!id || !CASE_ID_RE.test(id)) throw new TierCompareDocError('case', `case id ${String(x.id)}`)
@@ -175,16 +182,16 @@ function parseCase(x: unknown): TierCase {
   const tolPass = bool(x.tol_pass)
   const posRms: Record<string, number> = {}
   for (const [u, v] of Object.entries(obj(x.pos_rms_m))) if (UAV_RE.test(u) && num(v) !== null) posRms[u] = v as number
-  const iface = parseInterface(x.interface)
+  const iface = parseInterface(x.interface, tiers)
   const uavs = [...new Set([...Object.keys(posRms), ...Object.keys(iface.status)])].filter((u) => UAV_RE.test(u))
   const ratios = rows.map((r) => r.ratio).filter((r): r is number => r !== null)
   const w = isObj(x.wall_s) ? x.wall_s : null
   return {
     id, title: str(x.title) ?? id, iface, failures: strs(x.failures),
-    metrics: { fast: metricMap(m.fast), realistic: metricMap(m.realistic) }, posRms, rows, tolPass, pass: bool(x.pass),
+    metrics: { fast: metricMap(m[ta]), realistic: metricMap(m[tb]) }, posRms, rows, tolPass, pass: bool(x.pass),
     consistent: rows.every((r) => r.consistent) && tolPass === rows.every((r) => r.recomputed),
     maxRatio: ratios.length ? Math.max(...ratios) : null,
-    wallS: w ? { fast: num(w.fast), realistic: num(w.realistic) } : null,
+    wallS: w ? { fast: num(w[ta]), realistic: num(w[tb]) } : null,
     uavs,
   }
 }
@@ -231,20 +238,27 @@ function parseM25(x: unknown): M25Bytewise | null {
 }
 
 /** 解析并校验 `tier_compare.json`；schema 不符或无用例时整体拒绝 */
+/** 报告的 `tiers`（两个档名，`build_report` 的 meta）；缺失或不合规时按封板前制品的 `[fast, realistic]` */
+function parseTiers(x: unknown): TierPair {
+  const ok = Array.isArray(x) && x.length === 2 && x.every((v) => typeof v === 'string' && /^[a-z][a-z0-9_]{0,15}$/.test(v)) && x[0] !== x[1]
+  return ok ? [x[0] as string, x[1] as string] : [TIERS[0], TIERS[1]]
+}
+
 export function parseTierCompare(raw: unknown): TierCompareDoc {
   if (!isObj(raw) || raw.schema !== TIER_COMPARE_SCHEMA) throw new TierCompareDocError('schema', `schema ${isObj(raw) ? String(raw.schema) : typeof raw}`)
   if (!Array.isArray(raw.cases) || !raw.cases.length) throw new TierCompareDocError('cases', 'no cases')
-  const cases = raw.cases.map(parseCase)
+  const tiers = parseTiers(raw.tiers)
+  const cases = raw.cases.map((c) => parseCase(c, tiers))
   if (new Set(cases.map((c) => c.id)).size !== cases.length) throw new TierCompareDocError('cases', 'duplicate case id')
   const cp = isObj(raw.clock_profile) ? raw.clock_profile : null
   const gz = isObj(raw.gz) ? raw.gz : null
   const ts = str(raw.tolerance_status)
   const s = obj(raw.summary)
   return {
-    schema: TIER_COMPARE_SCHEMA, generatedUtc: str(raw.generated_utc), vehicle: str(raw.vehicle),
+    schema: TIER_COMPARE_SCHEMA, tiers, generatedUtc: str(raw.generated_utc), vehicle: str(raw.vehicle),
     clockProfile: cp ? { name: str(cp.name), mainHz: num(cp.main_hz), physicsHz: num(cp.physics_hz) } : str(raw.clock_profile) ? { name: str(raw.clock_profile), mainHz: null, physicsHz: null } : null,
     tickMs: num(raw.tick_ms), poseHistoryHz: num(raw.pose_history_hz), windMode: str(raw.wind_mode), turbulenceSigma: num(raw.turbulence_sigma),
-    dragLaw: str(raw.drag_law), collisionSource: str(raw.collision_source), m09Autonomy: str(raw.m09_autonomy), realisticTracker: str(raw.realistic_tracker),
+    dragLaw: str(raw.drag_law), collisionSource: str(raw.collision_source), m09Autonomy: str(raw.m09_autonomy), realisticTracker: str(raw[`${tiers[1]}_tracker`]),
     kernel: str(raw.kernel), gz: gz ? { simVersion: str(gz.gz_sim_version), pluginBuild: str(gz.plugin_build) } : null,
     toleranceStatus: ts, toleranceFrozen: ts !== null && /^frozen\b/i.test(ts.trim()),
     cases,

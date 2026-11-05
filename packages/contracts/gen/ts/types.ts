@@ -12147,7 +12147,7 @@ export interface RunSpecV1 {
     image_digest?: string
     params?: {}
   }
-  physics?: 'realistic' | 'fast' | 'sitl'
+  physics?: 'realistic' | 'fast' | 'gz' | 'sitl'
   /**
    * M24 §7.2 (optional; defaults keep the baseline behaviour)
    */
