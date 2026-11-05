@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anet-drone.dev/bench/1/decision.v1.schema.json",
+  "title": "Commander decision (drone4d.bench.decision.v1)",
+  "description": "One decision of an external commander (a vision-language model, a scripted plan or an HTTP agent) for the whole fleet: skill commands from the closed vocabulary, task-layer reports and the done declaration (engine plan step 6, ADR-227). The Env side expands every skill into per-tick bench/act.v1 nav and gimbal commands (awr.agentsdk.skills). Report objects are defined by the task layer (the mission types of the benchmark); here they are only objects. Every number is finite: NaN and infinity are rejected. The HTTP gateway (awr.agentsdk.gateway) answers 400 with the rejection text of awr.agentsdk.skills.validate_decision.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "drone4d.bench.decision.v1"
+    },
+    "thought": {
+      "type": "string",
+      "description": "The commander's brief reasoning; recorded, never executed"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SkillCommand"
+      }
+    },
+    "reports": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Task-layer reports (found, track, count, plate, event ...); their fields are the task layer's contract"
+    },
+    "done": {
+      "type": "boolean",
+      "description": "Ends the episode at once; commands sent with it have no effect"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "_usage": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "description": "Billing records of the model calls that produced this decision (task-layer accounting); not part of the vocabulary"
+    }
+  },
+  "$defs": {
+    "UavId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Speed": {
+      "type": "number",
+      "description": "m/s, clamped by the executor to 1 .. cruise (8 m/s)"
+    },
+    "Agl": {
+      "type": "number",
+      "description": "Height above the terrain in m; the executor keeps a 2 m physical floor, the task's altitude envelope is scored, not enforced"
+    },
+    "SkillCommand": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Goto"
+        },
+        {
+          "$ref": "#/$defs/Sweep"
+        },
+        {
+          "$ref": "#/$defs/Orbit"
+        },
+        {
+          "$ref": "#/$defs/Follow"
+        },
+        {
+          "$ref": "#/$defs/LookAt"
+        },
+        {
+          "$ref": "#/$defs/Hold"
+        },
+        {
+          "$ref": "#/$defs/Rtl"
+        },
+        {
+          "$ref": "#/$defs/Zoom"
+        }
+      ]
+    },
+    "Goto": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "goto"
+        },
+        "params": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "agl": {
+              "$ref": "#/$defs/Agl"
+            },
+            "speed": {
+              "$ref": "#/$defs/Speed"
+            }
+          }
+        }
+      },
+      "description": "fly to a point at the given height above ground and keep the camera on it after arrival"
+    },
+    "Sweep": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "sweep"
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "polygon": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number",
+              "description": "Side of the square around (x, y) when no polygon is given (default 150 m)"
+            },
+            "agl": {
+              "$ref": "#/$defs/Agl"
+            },
+            "lane": {
+              "type": "number",
+              "description": "Lane spacing in m (default 80 % of the ground footprint height at that altitude, at least 10 m)"
+            },
+            "speed": {
+              "$ref": "#/$defs/Speed"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "polygon"
+              ]
+            },
+            {
+              "required": [
+                "x",
+                "y"
+              ]
+            }
+          ]
+        }
+      },
+      "description": "lawnmower coverage of an area, camera straight down"
+    },
+    "Orbit": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "orbit"
+        },
+        "params": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 20,
+              "description": "m, default 50"
+            },
+            "period": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "s per revolution, default 90"
+            },
+            "agl": {
+              "$ref": "#/$defs/Agl"
+            },
+            "speed": {
+              "$ref": "#/$defs/Speed"
+            }
+          }
+        }
+      },
+      "description": "circle a point with the camera on it"
+    },
+    "Follow": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "follow"
+        },
+        "params": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "agl": {
+              "$ref": "#/$defs/Agl"
+            },
+            "standoff": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Stop this many m short of the point on the approach side for an oblique view (default 0)"
+            },
+            "speed": {
+              "$ref": "#/$defs/Speed"
+            }
+          }
+        }
+      },
+      "description": "fly over a (moving) ground point and keep the camera on it; resend with the new position each step"
+    },
+    "LookAt": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "look_at"
+        },
+        "params": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "description": "aim the camera at a ground point without changing the flight"
+    },
+    "Hold": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "hold"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "description": "hover in place"
+    },
+    "Rtl": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "rtl"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "description": "return to the home pad and land; ends the drone's part of the mission"
+    },
+    "Zoom": {
+      "type": "object",
+      "required": [
+        "uav",
+        "skill",
+        "params"
+      ],
+      "properties": {
+        "uav": {
+          "$ref": "#/$defs/UavId"
+        },
+        "skill": {
+          "const": "zoom"
+        },
+        "params": {
+          "type": "object",
+          "required": [
+            "factor"
+          ],
+          "properties": {
+            "factor": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        }
+      },
+      "description": "optical zoom of that drone's camera; only when the run has an optical lens"
+    }
+  }
+}
