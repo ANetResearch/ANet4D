@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """tools/bench/d3/determinism_official.py：正式成绩配置两次运行逐字节对拍（D3-AC-17；P05；ADR-162、ADR-177）。
 
-正式成绩配置 = Realistic 档 gz `physics` 导出档（gz-sim 锁步，`SupervisedGzBackend`）+ M25 GPU 帧（EGL 光栅相机、rgb1080-rs、
+正式成绩配置 = Realistic 档（ADR-226 起为统一 L2 引擎 `awr.phys.l2`；`--physics gz` 时为 gz-sim 锁步 `SupervisedGzBackend`）+ M25 GPU 帧（EGL 光栅相机、rgb1080-rs、
 倒装 MID-360、IMU、GNSS）+ L2 + 参考基线策略（含参考检测器），Run 规格取 `configs/bench.d3/crop-handoff-001.l2-3uav.run_spec.json`。
 同一 Run 规格、同一 `run_id`、同一种子、同一镜像与同一张卡上按下列变体各跑一次（每个变体一个独立子进程，各自一个 gz 实例与 GL 上下文）：
 
@@ -385,7 +385,7 @@ def _spec_for(job: dict, name: str):
         rs["duration_s"] = float(job["duration_s"])
     out = Path(job["out"]) / "runs" / name
     gz = {k: v for k, v in (job.get("gz") or {}).items() if v is not None}
-    if rs.get("physics", "realistic") == "realistic" and job.get("physics") in (None, "realistic"):
+    if (job.get("physics") or rs.get("physics", "realistic")) == "gz":                     # gz lockstep only (ADR-226)
         gz = {**gz, "name": f"{job.get('gz_prefix', 'd3-gz-p05')}-{name}", "run_dir": str(out / "phys"),
               "export_root": gz.get("export_root") or str(Path(job["out"]) / "export")}
     run_id = job.get("run_id") or f"p05-{job['policy']}-s{job['seed']}"
@@ -428,7 +428,7 @@ def _cmd_run(a) -> int:
     (out / "job.json").write_text(json.dumps(job, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     # 世界级导出与 MeshWorldQuery 缓存先行一次，避免并行的运行同时写同一目录
     world_dir = Path(job["worlds_root"]) / json.loads(Path(a.spec).read_text(encoding="utf-8"))["world"]["id"]
-    if (job["physics"] or "realistic") == "realistic":
+    if (job["physics"] or "realistic") == "gz":                                                # the gz world export is only needed by the gz tier
         from awr.world.export.gz import export_world
 
         export_world(world_dir, out_root=Path(job["gz"]["export_root"] or out / "export"))

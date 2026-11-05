@@ -198,7 +198,7 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 
 ## 4. 怎么用
 
-- Env：`spec.physics = "l2"`（与 `kinematic / fast / realistic` 并列），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，`vehicles/usv` 里的 id（`otter`、`blueboat`、`wamv`）走海面域，多旋翼目录里带 `fw_dynamics` 的固定翼（`awr_f1`）走固定翼域，空陆海可以混编在同一机队；VTOL（`awr_v1`）仍是 630。
+- Env：`spec.physics = "realistic"`（正式档就是统一引擎，5e / ADR-226，见 §7；`"l2"` 为旧名仍可用；gz 锁步改为 `"gz"`，只作交叉验证），机型由 `fleet[].vehicle_ref` 给出：多旋翼目录里的机型走多旋翼域，`vehicles/ground` 里的 id（`f1tenth`、`osr`、`podcar`）走地面域，`vehicles/usv` 里的 id（`otter`、`blueboat`、`wamv`）走海面域，多旋翼目录里带 `fw_dynamics` 的固定翼（`awr_f1`）走固定翼域，空陆海可以混编在同一机队；VTOL（`awr_v1`）仍是 630。
 - 直接用：`L2Tier(uavs, spawn, world, grounded=…, vehicles=…, ground=…, water_z=…)`，接口同 `FastTier`；`set_wind(n×3)` 每 tick 写风（多旋翼与固定翼感到），`set_current(n×2)` 写流（只有艇感到）；车永远落在地面上，艇永远浮在 `water_z` 上（`grounded` 只对空中设备有意义；固定翼 `grounded` 即在发射架上，只有 takeoff 能让它动）。
 - 状态：车与艇用 `VehicleStatus.MOVING`（行驶 / 航行中），静止分别为 GROUNDED / `AFLOAT`，撞上或搁浅为 CRASHED；Env 的 `status.mode` 对应 `driving` / `afloat`。固定翼用空中设备的词：GROUNDED（发射架）→ AIRBORNE → LANDING（伞降中）→ GROUNDED，飞行中触地 / 撞网格为 CRASHED。
 - 对拍：`python -m awr.phys.tier_compare run --tier l2 --out DIR`，`report --out DIR --tiers fast,l2`；地面域 `run --set ground --tier l2|st`，`report --set ground --tiers l2,st`；海面域 `run --set water --tier l2|fossen`，`report --set water --tiers l2,fossen`；固定翼域 `run --set wing --tier l2|bm|fw`，`report --set wing --tiers l2,bm` / `l2,fw`。
@@ -211,7 +211,7 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 1. ~~地面车 `ugv`~~：5b 已做（§2b、§3b）。还没做的：差速 / 滑移转向的专用运动学（现在 `drive.type` 只是标注，六轮漫游车按等效自行车处理）、Pacejka 非线性轮胎、悬挂。
 2. ~~无人艇 `usv`~~：5c 已做（§2c、§3c）。还没做的：横摇 / 纵摇 / 升沉（波浪）、单舵单桨与全回转推进的分配（`propulsion.type` 现在只接受 `twin_fixed` 的动力学）、风的 A 级系数。
 3. ~~固定翼 `fixed_wing`~~：5d 已做（§2d、§3d）。还没做的：VTOL `vtol` 域（旋翼 + 固定翼过渡），非对角惯量 J_xz，螺旋桨的扭矩 / 滑流效应，固定翼的滑跑起降（现在只有弹射 + 伞降），系数的 A / B 级来源（现在是 Aerosonde 形状缩放的 D 级）。
-4. numba 核（机群大时）；三个域过门后把 `physics = "realistic"` 切到统一引擎。
+4. numba 核（机群大时）。~~三个域过门后把 `physics = "realistic"` 切到统一引擎~~：5e 已做（§7）。
 5. `l3`（SITL）不在本步。
 
 ## 6. 回归
@@ -222,3 +222,13 @@ L2 ↔ gz 的差与原有的 Fast ↔ gz 同量级或更小。限幅用例里 gz
 - 5d：新增 `tests/d3/phys/test_l2_fixedwing.py` 12 项：机型包参数与配平（巡航 / 最低速配平在包线内，多旋翼机型被拒 630）、速度阶跃与爬升保持及确定性（两次 `pose_sha256` 相同）、弹射起飞（地面指令不动、GROUND → LAUNCH → FLY、LIFTOFF 时刻与速度、导轨姿态、爬到 60 m 后盘旋）、伞降触地与 kill 触地、8 m/s 侧风沿线（偏航距、偏流角、对地速度）、空 / 固定翼 / 车混编（空中 takeoff 为空操作、车拒绝 630）、两个基准的内核名与只收空中指令、与 B&M 基准（爬升、环绕）和快速档（goto、侧风）接口一致且容差内（全部 7 × 2 用例由 `tier_compare --set wing` 跑）、引擎独有的撞墙。保真档断言改为含固定翼（`awr_f1` l2 可用，`awr_v1` 仍无）；`test_l2.py` 的"无域模型被拒"改用 VTOL。
 - 5c：新增 `tests/d3/phys/test_l2_usv.py` 18 项：机型包校验与装载、分配与轴限幅、基准 ODE 静止 / 定速自洽、速度阶跃精确停船与确定性（3 自由度：无横滚 / 俯仰 / 升沉）、流中保位（顶流、对地速度 0）与 kill 随流漂、搁浅与水位、空陆海混编（x500 + f1tenth + blueboat 同一档位）、环绕一圈后停、航行中 hover 不掉头、基准本身、与 Fossen 基准接口一致且容差内（8 用例）。`VehicleStatus.AFLOAT` 只有艇会报。
 - 5b：新增 `tests/d3/phys/test_l2_ugv.py` 17 项：机型包校验与装载、控制限幅、低速隐式解 = 运动学单轨、速度阶跃精确停车与确定性、坡面跟随（倾角 = atan 坡度、定速）、撞墙（mesh）与路缘（dsm）、空陆混编（x500 + f1tenth 同一档位，车拒绝 takeoff / land）、环绕、基准本身、与 ST 基准接口一致且容差内（8 用例）。`L2Tier` 重构成域分组（多旋翼代码路径不变，`test_l2.py` 12 项照旧通过）；保真档断言改为含陆行；`VehicleStatus.MOVING` 只有车会报，空中设备路径不变。
+
+## 7. 5e：`physics = "realistic"` 切到统一引擎（ADR-226）
+
+四个域都过门后，正式档换成统一引擎，gz 退为交叉验证：
+
+- Env：`spec.physics = "realistic"` 创建 `L2Tier`（正式时钟规则不变：d1_250、M24 输出集合校验），运行清单 `tier = l2`；`"l2"` 是旧名，等价但不套正式时钟规则；`"gz"` 是 gz-sim 锁步（原 Realistic 档），只作交叉验证，`ranked_physics` 规则只允许 `realistic` 排名，所以 gz 不出正式成绩。
+- 调度器只为 `gz`、`sitl` 预留 gz 容器资源；`realistic` 运行在 Env 进程内的 CPU 上。
+- `run_spec.v1` 的 `physics` 枚举增加 `gz`（契约版本不变）。
+- `tier_compare`：gz 档的标签改为 `gz`（`run --tier gz`，制品 `<case>.gz.npz`，`report --tiers fast,gz` 写 `tier_compare.json`）；报告 schema `drone4d.phys.tier_compare.v1` 不变，`/lab/compare` 页按报告的 `tiers` 取第二档的名字，封板前写出的制品（标签 `realistic`）照常可读。
+- 没做、登记为后续事项：排行榜在本 ADR 前后的正式成绩分别在 gz 与统一引擎上取得，下一次正式评测前须登记新的榜单版本与平台摘要（F-150）；正式配置的确定性复测（`determinism_official`）在统一引擎上于 dmax 独占卡重做（F-151）；`physics_opts.vehicle_collision`（机间碰撞）只有 gz 实现，统一引擎暂无机间碰撞。

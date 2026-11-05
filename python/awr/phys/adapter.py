@@ -147,11 +147,11 @@ def steps_per_tick(tick_ms: int, physics_hz: int) -> int:
     return tick_ms * physics_hz // 1000
 
 
-def validate_clock(tier: Literal["fast", "realistic", "sitl"], cp: ClockProfile, tick_ms: int, outputs: Sequence[str] = ()) -> None:
+def validate_clock(tier: Literal["fast", "realistic", "gz", "sitl"], cp: ClockProfile, tick_ms: int, outputs: Sequence[str] = ()) -> None:
     """§6.2 规则；违反任一条抛 PhysError(637)。"""
     bad: list[str] = []
-    if tier in ("realistic", "sitl") and (cp.main_hz, cp.physics_hz, cp.l1_hz) != (250, 250, 250):
-        bad.append("realistic and sitl run only {d1_250, 250, 250, 250}")
+    if tier in ("realistic", "gz", "sitl") and (cp.main_hz, cp.physics_hz, cp.l1_hz) != (250, 250, 250):
+        bad.append("realistic, gz and sitl run only {d1_250, 250, 250, 250}")
     if cp.main_hz % cp.l1_hz:
         bad.append("main_hz / l1_hz must be an integer")
     step_ms = 1000 / cp.physics_hz

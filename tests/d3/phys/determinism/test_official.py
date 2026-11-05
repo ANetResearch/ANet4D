@@ -283,7 +283,7 @@ def test_official_config_gpu_short_episode(tmp_path_factory) -> None:
     print(r.stdout[-4000:], r.stderr[-4000:])
     doc = json.loads((out / DO.SUMMARY_NAME).read_text())
     assert r.returncode == 0 and doc["ok"], json.dumps({"failed": doc["failed"], "cmp": doc["comparisons"]}, indent=1)[:6000]
-    assert doc["config"]["physics"] == "realistic" and doc["config"]["tier"] == "realistic" and doc["config"]["obs_level"] == "L2"
+    assert doc["config"]["physics"] == "realistic" and doc["config"]["tier"] == "l2" and doc["config"]["obs_level"] == "L2"   # ADR-226
     assert doc["config"]["sensors"]["renderer"] == "RasterCamera" and "NVIDIA" in str(doc["config"]["sensors"]["gl"])  # M25 GPU 相机（EGL）
     assert set(doc["comparisons"]) == {"repeat", "bp_vs_free"}
     n = round(dur * 10)
@@ -300,7 +300,7 @@ def test_official_summary_artifact() -> None:
     doc = json.loads(Path(p).read_text())
     assert doc["schema"] == DO.SCHEMA and doc["ok"] and not doc["failed"]
     cfg = doc["config"]
-    assert cfg["physics"] == cfg["tier"] == "realistic" and cfg["obs_level"] == "L2" and cfg["duration_s"] == 360 and cfg["n_ticks"] == 3600
+    assert cfg["physics"] == "realistic" and cfg["tier"] == "l2" and cfg["obs_level"] == "L2" and cfg["duration_s"] == 360 and cfg["n_ticks"] == 3600
     assert cfg["policy"] in ("static_guard", "coverage_scan", "track_share") and {"image.gz", "image.sensorsvc"} <= set(cfg["versions"])
     assert cfg["sensors"]["renderer"] == "RasterCamera" and "NVIDIA" in str(cfg["sensors"]["gl"])
     assert set(doc["comparisons"]) == {p[0] for p in DO.PAIRS} and all(c["ok"] for c in doc["comparisons"].values())

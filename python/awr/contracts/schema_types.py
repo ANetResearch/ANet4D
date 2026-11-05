@@ -8600,7 +8600,7 @@ class RunSpecV1(TypedDict):
     task: NotRequired[str | None]
     fleet: list[RunSpecV1Fleet]
     policy: RunSpecV1Policy
-    physics: NotRequired[Literal["realistic", "fast", "sitl"]]
+    physics: NotRequired[Literal["realistic", "fast", "gz", "sitl"]]
     physics_opts: NotRequired[RunSpecV1PhysicsOpts]
     clock_profile: NotRequired[Literal["d1_250", "sandbox100"] | RunSpecV1ClockProfileOneOf1]
     obs_level: Literal["L1", "L2", "L2-depth", "L3", "T0"]

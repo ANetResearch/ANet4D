@@ -63,6 +63,8 @@ def test_ranked_fast_returns_682_ranked_requires_realistic() -> None:
                                                                                  ("ranked", "ranked_requires_realistic", 682)}
     assert check(spec(physics="fast")) == []                    # 非排名的 Fast 运行允许（Env 接受 physics = fast）
     assert check(spec(physics="fast", ranked=False)) == []
+    assert check(spec(physics="gz")) == []                      # gz 锁步交叉验证档（ADR-226）：不排名时允许
+    assert _codes(spec(physics="gz", ranked=True)) == {(682, "ranked_requires_realistic")}
 
 
 def test_ranked_gz_profile_and_vehicle_collision_are_realistic_only() -> None:
@@ -174,4 +176,4 @@ def test_appearance_enums_are_in_sync() -> None:
     assert gate["ranked_appearance"]["allow"] == {"appearance": ["mesh"]}
     assert set(gate["ranked_appearance_source"]["if"]["appearance_source"]) == set(rs["appearance_source"]["enum"]) - {"aerial"}
     assert gate["sitl_unranked"]["code"] == 633 and gate["fast_unranked"]["why"] == "ranked_requires_realistic"
-    assert set(rs["physics"]["enum"]) == {"realistic", "fast", "sitl"}
+    assert set(rs["physics"]["enum"]) == {"realistic", "fast", "gz", "sitl"}

@@ -288,7 +288,7 @@ def estimate_cost(rs: Mapping, *, priority_class: str = "research", duration_s: 
     n = len(fleet)
     physics = rs.get("physics", "realistic")
     gz_profile = (rs.get("physics_opts") or {}).get("gz_profile", "physics")
-    gz = 1 if physics in ("realistic", "sitl") else 0
+    gz = 1 if physics in ("gz", "sitl") else 0                   # realistic is the unified L2 engine inside the Env process (ADR-226)
     xval = gz if gz_profile == "xval" else 0
     in_containers = (rs.get("policy") or {}).get("kind", "sdk") in ("reference", "image")
     cpu = m.env_cpu + (m.gz_xval_cpu if xval else m.gz_physics_cpu) * gz + (m.agent_cpu * n if in_containers else 0.0)

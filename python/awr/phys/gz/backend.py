@@ -105,7 +105,7 @@ class GzSimBackend:
     step_timeout_s: float = STEP_TIMEOUT_S           # 看门狗：单 tick 等待 StepDone 的墙钟上限（632）
     alive: Callable[[], bool] | None = field(default=None, repr=False)   # 实例存活检查（638）；None 只靠超时
     poll_s: float = 0.2                              # 等待回复期间检查 alive() 的间隔
-    name: str = "realistic"
+    name: str = "gz"                                 # the physics tier name (`physics = gz`; "realistic" before 5e, ADR-226)
     wind: Any = None                                 # field 风模式采样器（FieldWind）；None 为 uniform / 无风
 
     def __post_init__(self) -> None:

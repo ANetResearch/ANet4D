@@ -15,7 +15,8 @@ M25 会话（`sensorsvc`，L2 与 L2-depth）：到期帧以 `(uav, sensor, seq)
 观测（641 时按原键重提交，仿真时钟不推进、不降频、不转离线，ADR-162）；L2Sensors 为该会话的进程内 worker 后端，每个 tick 生成一次
 并按键交付，帧字节与不经会话时相同。观测墙预览（`wall_preview`）由写入器旁路从交付的相机帧降采样（2 Hz、480 × 270、JPEG 75），
 写入 `preview/<uav>/<seq>.jpg` 或交给回调，不进入 M25 预览队列（ADR-173）。
-物理档（`spec.physics`）：`realistic`（gz 锁步，正式成绩）、`fast`（FleetSim，`awr.phys.fast`）、`kinematic`（开发夹具）；同一 Agent
+物理档（`spec.physics`）：`realistic`（统一 L2 引擎 `awr.phys.l2`，正式成绩；ADR-226，5e 之前为 gz 锁步）、`gz`（gz-sim 锁步，交叉验证，
+不排名）、`fast`（FleetSim，`awr.phys.fast`）、`kinematic`（开发夹具）；`l2` 为 `realistic` 的旧名；同一 Agent
 代码与观测接口在各档不变，`clock_profile` 先按 M24 时钟档规则与输出集合校验（637）。
 goto 目标解释在本机导航系，每个控制步按当前导航误差换算为真值系目标（变化 ≥ 5 cm 时更新跟踪器）。
 预滚（`env.preroll`，M26-FR-004）：reset 时先推进事件零点之前的 `[−t_pre, 0)`（缺省 2 s；地面起飞为静止、空中出生为悬停保持），
@@ -181,20 +182,29 @@ class BenchEnv:
 
             return FastTier(self.uavs, spawn, self.world, grounded=grounded, vehicles={f.uav: f.vehicle_ref for f in self.spec.fleet},
                             clock_profile=self.spec.clock_profile, tick_ms=TICK_MS, outputs=self._tier_outputs())
-        if self.spec.physics == "l2":
+        if self.spec.physics in ("realistic", "l2"):
+            # the formal tier is the unified L2 engine (ADR-226, step 5e); "l2" is its pre-5e name and stays as an alias that
+            # skips the formal clock rule
             from awr.phys.l2 import L2Tier
 
+            if self.spec.physics == "realistic":
+                self._check_formal_clock("realistic")
             return L2Tier(self.uavs, spawn, self.world, grounded=grounded, vehicles={f.uav: f.vehicle_ref for f in self.spec.fleet},
                           clock_profile=self.spec.clock_profile, tick_ms=TICK_MS, outputs=self._tier_outputs())
-        if self.spec.physics == "realistic":
-            from awr.phys.adapter import validate_clock
-            from awr.phys.fast import check_physics_hz, clock_of
-
-            cp = clock_of(self.spec.clock_profile)
-            validate_clock("realistic", cp, TICK_MS, self._tier_outputs())
-            check_physics_hz(cp, self._tier_outputs())
+        if self.spec.physics == "gz":
+            # gz-sim lockstep, the formal tier before 5e: cross-validation only (never ranked, ADR-226 decision (2))
+            self._check_formal_clock("gz")
             return _GzTier.create(self.spec, spawn, grounded, self.world)
-        raise ValueError(f"physics {self.spec.physics!r} is not available (kinematic, fast, l2, realistic)")
+        raise ValueError(f"physics {self.spec.physics!r} is not available (kinematic, fast, realistic, gz; l2 = realistic)")
+
+    def _check_formal_clock(self, tier: str) -> None:
+        """M24 clock rules of the 250 Hz tiers (637) and the physics-rate / output-set compatibility check."""
+        from awr.phys.adapter import validate_clock
+        from awr.phys.fast import check_physics_hz, clock_of
+
+        cp = clock_of(self.spec.clock_profile)
+        validate_clock(tier, cp, TICK_MS, self._tier_outputs())
+        check_physics_hz(cp, self._tier_outputs())
 
     def _tier_outputs(self) -> tuple[str, ...]:
         """时钟档相容性校验用的输出集合（M24-FR-005）：L2 与 L2-depth 按 `spec.l2` 开关给出 camera、lidar、imu。"""
@@ -731,7 +741,7 @@ SPAWN_LEVEL_M = 0.15
 
 
 class _GzTier:
-    """Realistic 档：每 Run 一个 gz 实例（GzInstance + compose_run + SupervisedGzBackend：看门狗 632 / 638 时重启实例并从回合起点
+    """gz 交叉验证档（`physics = gz`；5e 之前的正式档）：每 Run 一个 gz 实例（GzInstance + compose_run + SupervisedGzBackend：看门狗 632 / 638 时重启实例并从回合起点
     重放，M24-FR-078、FR-079），关闭时停止实例。机型按 `fleet[].vehicle_ref` 映射（`awr.phys.gz.vehicles`，M24-FR-083）：`p600_bench`
     在 x500_d4d 几何上换用其质量、惯量与最大转速，派生模型写入 `<run_dir>/models/` 并只读挂载进 gz 实例；其余机型用 x500 原型。
     映射参数写入运行清单 `tier_info.vehicle`。"""
