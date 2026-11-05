@@ -255,6 +255,7 @@
       "enum": [
         "realistic",
         "fast",
+        "gz",
         "sitl"
       ],
       "default": "realistic"

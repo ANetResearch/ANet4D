@@ -149,8 +149,10 @@ class CostModel:
     prepare_gz_s: float = 45.0
     env_cpu: float = 2.0                           # Env 与写入器每 Run（ADR-178）
     env_mem_gb: float = 4.0
-    gz_physics_cpu: float = 2.0
+    gz_physics_cpu: float = 2.0                    # gz 锁步实例（physics = gz、sitl）
     gz_physics_mem_gb: float = 2.0
+    l2_cpu: float = 2.0                            # 统一 L2 引擎（physics = realistic，Env 进程内）：与原 gz 物理实例同份额（ADR-226）
+    l2_mem_gb: float = 2.0
     gz_xval_cpu: float = 4.0
     gz_xval_mem_gb: float = 6.0
     gz_xval_vram_gb: float = 2.5
@@ -288,11 +290,12 @@ def estimate_cost(rs: Mapping, *, priority_class: str = "research", duration_s: 
     n = len(fleet)
     physics = rs.get("physics", "realistic")
     gz_profile = (rs.get("physics_opts") or {}).get("gz_profile", "physics")
-    gz = 1 if physics in ("realistic", "sitl") else 0
+    gz = 1 if physics in ("gz", "sitl") else 0                   # realistic is the unified L2 engine inside the Env process (ADR-226)
+    l2 = 1 if physics in ("realistic", "l2") else 0
     xval = gz if gz_profile == "xval" else 0
     in_containers = (rs.get("policy") or {}).get("kind", "sdk") in ("reference", "image")
-    cpu = m.env_cpu + (m.gz_xval_cpu if xval else m.gz_physics_cpu) * gz + (m.agent_cpu * n if in_containers else 0.0)
-    mem = m.env_mem_gb + (m.gz_xval_mem_gb if xval else m.gz_physics_mem_gb) * gz + (m.agent_mem_gb * n if in_containers else 0.0)
+    cpu = m.env_cpu + m.l2_cpu * l2 + (m.gz_xval_cpu if xval else m.gz_physics_cpu) * gz + (m.agent_cpu * n if in_containers else 0.0)
+    mem = m.env_mem_gb + m.l2_mem_gb * l2 + (m.gz_xval_mem_gb if xval else m.gz_physics_mem_gb) * gz + (m.agent_mem_gb * n if in_containers else 0.0)
     chans = list(channels) if channels is not None else channels_of(rs)
     outputs = set(rs.get("outputs") or [])
 

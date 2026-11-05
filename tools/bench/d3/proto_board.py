@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--policies", default="static_guard,coverage_scan,track_share")
     ap.add_argument("--seeds", help="comma-separated; default: run_spec seeds")
     ap.add_argument("--jobs", type=int, default=3)
-    ap.add_argument("--physics", choices=("realistic", "kinematic"))
+    ap.add_argument("--physics", choices=("realistic", "gz", "kinematic"))
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--agents", choices=("inproc", "container"), default="inproc",
                     help="container: each UAV agent in an isolated container over drone4d.bench.wire.v1 (formal runs)")
@@ -91,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     physics = a.physics or rs.get("physics", "realistic")
     a.out.mkdir(parents=True, exist_ok=True)
     tag = rs["event"]["id"]
-    gz = {"launcher": a.gz_launcher, "image": a.gz_image, "export_root": a.gz_export_root} if physics == "realistic" else {}
+    gz = {"launcher": a.gz_launcher, "image": a.gz_image, "export_root": a.gz_export_root} if physics == "gz" else {}      # the gz instance options are only used by the gz tier (ADR-226)
     jobs = [{"spec": rs, "policy": p, "seed": s, "out": str(a.out), "tag": tag, "physics": physics, "gz": gz, "worlds_root": str(a.worlds_root),
              "events_root": str(a.events_root), "agents": a.agents, "agent_image": a.agent_image, "duration_s": a.duration_s} for p in a.policies.split(",") for s in seeds]
     done, failures = [], []

@@ -628,7 +628,7 @@ def _prepare_world(job: Mapping) -> None:
     if job["worker"] != "env":
         return
     world_dir = Path(job["worlds_root"]) / job["world"]
-    if (job.get("physics") or "realistic") == "realistic":
+    if (job.get("physics") or "realistic") == "gz":                                        # gz world export only for the gz tier (ADR-226)
         from awr.world.export.gz import export_world
 
         export_world(world_dir, out_root=Path(job["gz"]["export_root"] or Path(job["out"]) / "export"))
@@ -911,7 +911,7 @@ def _args(argv: Sequence[str] | None) -> argparse.Namespace:
     lo.add_argument("--retention", choices=("compact", "delete", "keep"), default="compact")
     lo.add_argument("--worlds-root", default=str(ROOT / "worlds"))
     lo.add_argument("--events-root", default=None)
-    lo.add_argument("--physics", choices=("realistic", "fast", "kinematic"), default=None)
+    lo.add_argument("--physics", choices=("realistic", "gz", "fast", "kinematic"), default=None)
     lo.add_argument("--gz-launcher", choices=("docker", "local"), default="docker")
     lo.add_argument("--gz-image", default="d3-gz:dev")
     lo.add_argument("--gz-export-root", default=None)

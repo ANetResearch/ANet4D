@@ -1,6 +1,7 @@
 // /lab/compare，快速仿真与高保真仿真对照（D3-AC-35 验证方法列"Playwright lab/compare"；AWR-05 §5.3.6 档间差异报告；AWR-14 §21.10；UX-AC-097
 // "两运行共用播放头；规格不一致时提示；差异图表与评测文件一致"；M24-AC-016、AC-028）。内部 D3 构建，最低角色研究者，只读。
-// - 数据：BN-54 `GET /runs/{run}/artifacts/tier_compare/`下的 `tier_compare.json` 与所选用例的 `<case>.fast.npz`、`<case>.realistic.npz`
+// - 数据：BN-54 `GET /runs/{run}/artifacts/tier_compare/`下的 `tier_compare.json` 与所选用例的 `<case>.<tier>.npz`（两档名取报告的 `tiers`：
+//   `fast` 与 `gz`，封板前的制品为 `fast` 与 `realistic`，ADR-226）
 //   （tierCompare.ts）；`run` 缺省时取 `b`（高保真仿真一侧的运行）；
 // - 左栏：用例表（接口判定、容差判定、容差裕度）与报告汇总（通过数、容差裕度最小的用例、容差状态）；
 // - 主区：两档轨迹平面图（快速仿真实线、高保真仿真虚线）与高度曲线、逐样本位置差曲线（报告位置 RMS 为参考线），三者共用 lab 播放头；
@@ -128,7 +129,7 @@ function Summary({ doc }: { doc: TierCompareDoc }) {
 
 // ---------------------------------------------------------------------------------------------------- 主区表格
 interface MetricRow { key: string; fast: MetricValue | undefined; real: MetricValue | undefined; diff: DiffRow | null }
-function MetricTable({ c }: { c: TierCase }) {
+function MetricTable({ c, tb }: { c: TierCase; tb: Tier }) {
   const t = useT()
   const L = useLabels()
   const keys = [...new Set([...Object.keys(c.metrics.fast), ...Object.keys(c.metrics.realistic), ...c.rows.map((r) => r.key)])]
@@ -137,7 +138,7 @@ function MetricTable({ c }: { c: TierCase }) {
   const cols: LfColumn<MetricRow>[] = [
     { key: 'metric', label: t('lab.compare.metrics.metric'), format: (r) => <span title={r.key}>{L.metric(r.key)}</span> },
     { key: 'fast', label: L.tier('fast'), align: 'right', format: (r) => withUnit(fmtMetric(r.fast), typeof r.fast === 'string' ? '' : u(r)) },
-    { key: 'real', label: L.tier('realistic'), align: 'right', format: (r) => withUnit(fmtMetric(r.real), typeof r.real === 'string' ? '' : u(r)) },
+    { key: 'real', label: L.tier(tb), align: 'right', format: (r) => withUnit(fmtMetric(r.real), typeof r.real === 'string' ? '' : u(r)) },
     { key: 'diff', label: t('lab.compare.metrics.diff'), align: 'right', format: (r) => (r.diff ? withUnit(fmtNum(r.diff.diff), u(r)) : '') },
     { key: 'tol', label: t('lab.compare.metrics.tol'), align: 'right', format: (r) => (r.diff ? withUnit(fmtNum(r.diff.tol), u(r)) : '') },
     { key: 'within', label: t('lab.compare.metrics.within'), format: (r) => (r.diff ? <Verdict ok={r.diff.recomputed} /> : '') },
@@ -165,14 +166,14 @@ function interfaceRows(c: TierCase, t: (k: string, p?: Record<string, string | n
   if (i.limitCap) out.push({ key: 'limit', item: t('lab.compare.iface.limit'), fast: withUnit(fmtNum(i.limitCap.fastMaxMps), 'm/s'), real: withUnit(fmtNum(i.limitCap.realisticMaxMps), 'm/s'), expect: `≤ ${withUnit(fmtNum(i.limitCap.capMps), 'm/s')}`, ok: i.limitCap.pass })
   return out
 }
-function InterfaceTable({ c }: { c: TierCase }) {
+function InterfaceTable({ c, tb }: { c: TierCase; tb: Tier }) {
   const t = useT()
   const L = useLabels()
   const rows = interfaceRows(c, t)
   const cols: LfColumn<IfaceRow>[] = [
     { key: 'item', label: t('lab.compare.iface.item'), format: (r) => r.item },
     { key: 'fast', label: L.tier('fast'), format: (r) => <span className="font-mono">{r.fast}</span> },
-    { key: 'real', label: L.tier('realistic'), format: (r) => <span className="font-mono">{r.real}</span> },
+    { key: 'real', label: L.tier(tb), format: (r) => <span className="font-mono">{r.real}</span> },
     { key: 'expect', label: t('lab.compare.iface.expect'), format: (r) => <span className="font-mono">{r.expect}</span> },
     { key: 'ok', label: t('lab.compare.iface.result'), format: (r) => <Verdict ok={r.ok} /> },
   ]
@@ -234,7 +235,7 @@ export function TierComparePage({ search }: RouteProps) {
   const uav = sel ? resolveUav(sel, q.uav) : null
   const caseId = sel?.id ?? ''
   const tracks = useQueries({
-    queries: TIERS.map((tier) => ({
+    queries: (doc?.tiers ?? TIERS).map((tier) => ({
       queryKey: tierCompareTrackKey(rid, caseId, tier),
       queryFn: async ({ signal }: { signal: AbortSignal }) => decodeTrack((await benchBytes(tierCompareArtifactPath(rid, trackFile(caseId, tier)), signal)).buf, tier),
       enabled: canRead && rid !== '' && caseId !== '', staleTime: Infinity, retry: 1, retryOnMount: false,
@@ -421,10 +422,10 @@ export function TierComparePage({ search }: RouteProps) {
                 value={(r, v) => `${withUnit(fmtNum(v), metricUnit(r.key))} / ${fmtNum(r.tol)}`} />
             </LfChartCard>
             <LfChartCard title={t('lab.compare.iface.title')} sub={t('lab.compare.iface.sub')} figureId="lab-compare-iface-card">
-              <InterfaceTable c={sel} />
+              <InterfaceTable tb={doc.tiers[1]} c={sel} />
             </LfChartCard>
             <LfChartCard title={t('lab.compare.metrics.title')} sub={t('lab.compare.metrics.sub')} figureId="lab-compare-metrics-card">
-              <MetricTable c={sel} />
+              <MetricTable tb={doc.tiers[1]} c={sel} />
             </LfChartCard>
             <div className={twoUp ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
               <LfChartCard title={t('lab.compare.sampling.title')} sub={t('lab.compare.sampling.sub')} figureId="lab-compare-sampling">

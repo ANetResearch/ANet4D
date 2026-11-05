@@ -35,6 +35,7 @@
  "lab.compare.readout": "Fast {fast} · Realistic {real} · Position difference {d} m",
  "lab.compare.tier.fast": "Fast",
  "lab.compare.tier.realistic": "Realistic",
+ "lab.compare.tier.gz": "gz lockstep",
  "lab.compare.meta.wind": "Wind {mode}, σ_turb = {sigma}",
  "lab.compare.meta.pass": "{n} of {total} cases passed",
  "lab.compare.meta.fail": "{n} of {total} cases passed; report failed",

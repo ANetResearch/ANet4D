@@ -31,7 +31,7 @@ Realistic 侧以测试构建的运动学注入（`Drone4DClock` `<inject>`，`in
 
 用法（dmax，见 tests/d3/gz/test_tier_compare.py）：
   python -m awr.phys.tier_compare run --tier fast --out DIR                        # Fast 档全部用例与参考轨迹
-  python -m awr.phys.tier_compare run --tier realistic --out DIR                   # d3-gz 容器内（launcher = local），含注入
+  python -m awr.phys.tier_compare run --tier gz --out DIR                          # d3-gz 容器内（launcher = local），含注入
   python -m awr.phys.tier_compare m25 --out DIR [--world WORLD_DIR]                # M25 两档采样对拍与逐字节（--world 时 GPU 相机）
   python -m awr.phys.tier_compare report --out DIR                                 # 汇总为 DIR/tier_compare.json
   python -m awr.phys.tier_compare run --set ground --tier l2|st --out DIR          # 地面域：统一引擎 ugv 对 CommonRoad ST 基准
@@ -85,8 +85,8 @@ __all__ = [
     "run_fast",
     "run_fossen",
     "run_fwkin",
+    "run_gz",
     "run_l2",
-    "run_realistic",
     "run_st",
     "write_inject",
 ]
@@ -715,9 +715,9 @@ def compose_case_sdf(case: Case, endpoint: str, *, uavs_z: Mapping[str, float] |
     return sdf
 
 
-def run_realistic(case: Case, run_dir: Path, *, launcher: str = "local", image: str = "d3-gz:dev", inject: Path | None = None,
-                  ready_s: float = 120.0) -> CaseRun:
-    """Realistic 档（GzSimBackend）执行用例；`inject` 为参考轨迹文件时以运动学注入世界运行（无重力、无静态碰撞、无指令）。"""
+def run_gz(case: Case, run_dir: Path, *, launcher: str = "local", image: str = "d3-gz:dev", inject: Path | None = None,
+           ready_s: float = 120.0) -> CaseRun:
+    """gz 锁步档（GzSimBackend，`physics = gz`；5e 之前叫 Realistic 档）执行用例；`inject` 为参考轨迹文件时以运动学注入世界运行（无重力、无静态碰撞、无指令）。"""
     from awr.phys.gz.backend import GzSimBackend
     from awr.phys.gz.compose import UavSpawn, compose_run
     from awr.phys.gz.instance import GzInstance
@@ -1173,8 +1173,8 @@ def _diff(a, b):
     return abs(float(a) - float(b))
 
 
-def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, str] = ("fast", "realistic")) -> dict:
-    """一个用例的接口判定与动力学差异（两档；`labels` 为报告中两档的名字，缺省 Fast 对 Realistic，也用于 Fast 对统一 L2 引擎）。"""
+def compare_case(case: Case, fast: CaseRun, real: CaseRun, labels: tuple[str, str] = ("fast", "gz")) -> dict:
+    """一个用例的接口判定与动力学差异（两档；`labels` 为报告中两档的名字，缺省 Fast 对 gz，也用于 Fast 对统一 L2 引擎、L2 对各基准）。"""
     iface: dict[str, Any] = {}
     la, lb = labels
     fails: list[str] = []
@@ -1310,7 +1310,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m awr.phys.tier_compare")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--tier", choices=("fast", "l2", "st", "fossen", "bm", "fw", "realistic"), required=True)
+    r.add_argument("--tier", choices=("fast", "l2", "st", "fossen", "bm", "fw", "gz"), required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--cases")
     r.add_argument("--set", default="air", choices=tuple(SETS),
@@ -1325,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--dz", type=float, default=0.0)
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
-    p.add_argument("--tiers", default="fast,realistic", help="the two tiers to compare, e.g. fast,l2, l2,st, l2,fossen, l2,bm or l2,fw")
+    p.add_argument("--tiers", default="fast,gz", help="the two tiers to compare, e.g. fast,l2, l2,gz, l2,st, l2,fossen, l2,bm or l2,fw")
     p.add_argument("--set", default="air", choices=tuple(SETS))
     a = ap.parse_args(argv)
     out = Path(a.out)
@@ -1335,7 +1335,7 @@ def main(argv: list[str] | None = None) -> int:
             if a.tier in ORACLES and c.params.get("oracle") is False:
                 print(f"[tier_compare] {c.id} {a.tier}: engine-only case, skipped", flush=True)
                 continue
-            run = RUNNERS[a.tier](c) if a.tier in RUNNERS else run_realistic(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
+            run = RUNNERS[a.tier](c) if a.tier in RUNNERS else run_gz(c, out / "gz" / c.id, launcher=a.launcher, image=a.image)
             run.save(out)
             print(f"[tier_compare] {c.id} {a.tier}: {run.wall_s} s", flush=True)
         if a.set == "air" and a.tier not in ("l2", *ORACLES) and (not a.cases or REF_CASE.id in a.cases.split(",")):
@@ -1344,15 +1344,15 @@ def main(argv: list[str] | None = None) -> int:
                 ref.save(out)
                 write_inject(ref, out / "inject_ref.f64")
             else:
-                got = run_realistic(REF_CASE, out / "gz" / "inject", launcher=a.launcher, image=a.image, inject=out / "inject_ref.f64")
+                got = run_gz(REF_CASE, out / "gz" / "inject", launcher=a.launcher, image=a.image, inject=out / "inject_ref.f64")
                 got.save(out)
             print(f"[tier_compare] {REF_CASE.id} {a.tier} done", flush=True)
         return 0
     if a.cmd == "m25":
         ref = CaseRun.load(out, REF_CASE.id, "fast")
         doc: dict = {}
-        if (out / f"{REF_CASE.id}_inject.realistic.json").is_file():
-            got = CaseRun.load(out, f"{REF_CASE.id}_inject", "realistic")
+        if (out / f"{REF_CASE.id}_inject.gz.json").is_file():
+            got = CaseRun.load(out, f"{REF_CASE.id}_inject", "gz")
             doc["sampling"] = {"pose_history": pose_history_diff(ref, got), "m25": m25_compare(ref, got)}
             doc["sampling"]["pass"] = bool(doc["sampling"]["pose_history"]["pass"] and doc["sampling"]["m25"]["pass"])
         wd = Path(a.world) if a.world else None
@@ -1380,7 +1380,8 @@ def main(argv: list[str] | None = None) -> int:
         meta["skipped"] = skipped
     m25 = json.loads((out / "m25.json").read_text(encoding="utf-8")) if (out / "m25.json").is_file() and a.set == "air" else {}
     doc = build_report(cases, sampling=m25.get("sampling"), m25=m25.get("m25_bytewise"), meta=meta)
-    name = "tier_compare.json" if (ta, tb, a.set) == ("fast", "realistic", "air") else f"tier_compare.{a.set + '.' if a.set != 'air' else ''}{ta}-{tb}.json"
+    # the D3-AC-35 artifact name: Fast against gz on the air set ("realistic" is the pre-5e label of the gz tier, still readable)
+    name = "tier_compare.json" if a.set == "air" and (ta, tb) in (("fast", "gz"), ("fast", "realistic")) else f"tier_compare.{a.set + '.' if a.set != 'air' else ''}{ta}-{tb}.json"
     (out / name).write_text(json.dumps(doc, indent=1, ensure_ascii=False, default=_json_default) + "\n", encoding="utf-8")
     print(json.dumps(doc["summary"]), flush=True)
     return 0

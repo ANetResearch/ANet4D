@@ -36,7 +36,7 @@ from awr.phys.tier_compare import (
     m25_digest,
     pose_history_diff,
     run_fast,
-    run_realistic,
+    run_gz,
     write_inject,
 )
 
@@ -57,7 +57,7 @@ def test_two_tier_conformance_and_report(tmp_path: Path) -> None:
     rows = []
     for c in CASES:
         fa = run_fast(c)
-        re_ = run_realistic(c, tmp_path / "gz" / c.id, launcher="local")
+        re_ = run_gz(c, tmp_path / "gz" / c.id, launcher="local")
         fa.save(out)
         re_.save(out)
         r = compare_case(c, fa, re_)
@@ -65,7 +65,7 @@ def test_two_tier_conformance_and_report(tmp_path: Path) -> None:
         print(f"[tier_compare] {c.id}: interface {r['interface']['pass']} tol {r['tol_pass']} diff {r['diff']}", flush=True)
     ref = run_fast(REF_CASE)
     ref.save(out)
-    got = run_realistic(REF_CASE, tmp_path / "gz" / "inject", launcher="local", inject=write_inject(ref, out / "inject_ref.f64"))
+    got = run_gz(REF_CASE, tmp_path / "gz" / "inject", launcher="local", inject=write_inject(ref, out / "inject_ref.f64"))
     got.save(out)
     assert got.info["plugin_build"].endswith("+inject")
     ph = pose_history_diff(ref, got)
@@ -74,8 +74,8 @@ def test_two_tier_conformance_and_report(tmp_path: Path) -> None:
     runs = [m25_digest(ref, world=BoxWorld()) for _ in range(2)]
     bytewise = {"runs": runs, "world": "BoxWorld", "pass": runs[0]["sha256"] == runs[1]["sha256"]}
     meta = {"kernel": rows and CaseRun.load(out, CASES[0].id, "fast").info.get("kernel"),
-            "gz": {k: CaseRun.load(out, CASES[0].id, "realistic").info.get(k) for k in ("gz_sim_version", "plugin_build")},
-            "realistic_tracker": "RefTracker (M08 refgen shared with Fast; compose velocity profile px4)"}
+            "gz": {k: CaseRun.load(out, CASES[0].id, "gz").info.get(k) for k in ("gz_sim_version", "plugin_build")},
+            "gz_tracker": "RefTracker (M08 refgen shared with Fast; compose velocity profile px4)"}
     doc = build_report(rows, sampling=sampling, m25=bytewise, meta=meta)
     (out / "tier_compare.json").write_text(json.dumps(doc, indent=1, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
     fails = {r["id"]: (r["failures"], {k: v for k, v in r["diff"].items() if not r["within"][k]}) for r in rows if not r["pass"]}

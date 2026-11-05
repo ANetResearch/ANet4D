@@ -237,10 +237,13 @@ def test_formal_run_spec_expands_to_realistic_l2(tmp_path: Path) -> None:
     assert L2Config().camera_profile == "rgb1080-rs" and cfg.lidar and cfg.imu and cfg.gnss       # 正式相机档与全部 L2 传感器
     assert s.policy == {"kind": "reference", "name": "track_share"} and s.seed_commit
     assert s.versions["image.gz"] == "sha256:" + "1" * 64 and s.versions["image.sensorsvc"] == "sha256:" + "2" * 64
-    # 各变体：同一 run_id、种子与运行身份（背压只改墙钟），gz 实例名与运行目录各自独立
+    # 各变体：同一 run_id、种子与运行身份（背压只改墙钟）；正式档是统一引擎，不建 gz 实例（ADR-226）
     assert len({x.run_id for x in specs.values()}) == 1 and len({x.run_hash() for x in specs.values()}) == 1
-    assert len({x.gz["name"] for x in specs.values()}) == len(specs) and len({x.gz["run_dir"] for x in specs.values()}) == len(specs)
-    assert {x.gz["export_root"] for x in specs.values()} == {str(tmp_path / "o" / "export")}
+    assert all("name" not in x.gz and "run_dir" not in x.gz for x in specs.values())
+    gzs = {n: DO._spec_for({**job, "physics": "gz"}, n) for n in DO.DEFAULT_RUNS}                  # gz 交叉验证档：实例名与运行目录各自独立
+    assert all(x.physics == "gz" for x in gzs.values())
+    assert len({x.gz["name"] for x in gzs.values()}) == len(gzs) and len({x.gz["run_dir"] for x in gzs.values()}) == len(gzs)
+    assert {x.gz["export_root"] for x in gzs.values()} == {str(tmp_path / "o" / "export")}
     assert DO._spec_for({**job, "duration_s": 12}, "a").duration_s == 12
     assert DO.main(["run", "--events-root", str(tmp_path), "--out", str(tmp_path / "x"), "--runs", "a,zz"]) == 2
 
@@ -283,7 +286,7 @@ def test_official_config_gpu_short_episode(tmp_path_factory) -> None:
     print(r.stdout[-4000:], r.stderr[-4000:])
     doc = json.loads((out / DO.SUMMARY_NAME).read_text())
     assert r.returncode == 0 and doc["ok"], json.dumps({"failed": doc["failed"], "cmp": doc["comparisons"]}, indent=1)[:6000]
-    assert doc["config"]["physics"] == "realistic" and doc["config"]["tier"] == "realistic" and doc["config"]["obs_level"] == "L2"
+    assert doc["config"]["physics"] == "realistic" and doc["config"]["tier"] == "l2" and doc["config"]["obs_level"] == "L2"   # ADR-226
     assert doc["config"]["sensors"]["renderer"] == "RasterCamera" and "NVIDIA" in str(doc["config"]["sensors"]["gl"])  # M25 GPU 相机（EGL）
     assert set(doc["comparisons"]) == {"repeat", "bp_vs_free"}
     n = round(dur * 10)
@@ -300,7 +303,7 @@ def test_official_summary_artifact() -> None:
     doc = json.loads(Path(p).read_text())
     assert doc["schema"] == DO.SCHEMA and doc["ok"] and not doc["failed"]
     cfg = doc["config"]
-    assert cfg["physics"] == cfg["tier"] == "realistic" and cfg["obs_level"] == "L2" and cfg["duration_s"] == 360 and cfg["n_ticks"] == 3600
+    assert cfg["physics"] == "realistic" and cfg["tier"] == "l2" and cfg["obs_level"] == "L2" and cfg["duration_s"] == 360 and cfg["n_ticks"] == 3600
     assert cfg["policy"] in ("static_guard", "coverage_scan", "track_share") and {"image.gz", "image.sensorsvc"} <= set(cfg["versions"])
     assert cfg["sensors"]["renderer"] == "RasterCamera" and "NVIDIA" in str(cfg["sensors"]["gl"])
     assert set(doc["comparisons"]) == {p[0] for p in DO.PAIRS} and all(c["ok"] for c in doc["comparisons"].values())

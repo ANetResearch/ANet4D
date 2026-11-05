@@ -164,7 +164,7 @@ class EnvSpec:
     fleet: tuple[FleetEntry, ...]
     obs_level: str = "L1"
     noise: str = "realistic"
-    physics: str = "realistic"                   # realistic（gz 锁步）| kinematic（开发档，不排名）
+    physics: str = "realistic"                   # realistic（统一 L2 引擎，正式成绩）| gz（gz 锁步交叉验证，不排名）| fast | kinematic（开发档）
     duration_s: float | None = None              # 缺省为事件时长
     decision: DecisionCfg = field(default_factory=DecisionCfg)
     comm: CommCfg = field(default_factory=CommCfg)
