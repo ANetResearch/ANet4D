@@ -43,8 +43,8 @@ def _offset(cursor: str | None) -> int:
         return 0
     try:
         raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
-        if raw.startswith("o"):
-            return max(0, int(raw[1:]))
+        if raw.startswith("o") and raw[1:].isascii() and raw[1:].isdigit():
+            return int(raw[1:])
     except (ValueError, UnicodeDecodeError):
         pass
     raise ApiProblem(300, status=400, detail={"field": "cursor"})

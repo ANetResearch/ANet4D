@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 from typing import Any
 
 import msgpack
@@ -226,7 +227,8 @@ async def sb_post_query(body: QueryBody, request: Request, p: SandboxViewer) -> 
 
 @router.get("/streamlines/{lib}/{name}")
 async def get_streamlines(lib: str, name: str, request: Request, _p: Viewer) -> Response:
-    if not (name.startswith("d") and name.endswith(".awsl") and name[1:-5].isdigit() and len(name) == 9):
+    # ASCII 数字：str.isdigit() 对上标数字（如 "²³⁴"）也为真，int() 却解析不了，请求会变成 500。
+    if not re.fullmatch(r"d[0-9]{3}\.awsl", name):
         raise ApiProblem(305, status=404)
     deg = int(name[1:4])
     if deg > 359:
